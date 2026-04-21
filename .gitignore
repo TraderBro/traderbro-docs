@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+.docusaurus/
+
+# Generated files
+static/llms-full.txt
+
+# OS
+.DS_Store

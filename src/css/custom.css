@@ -1,0 +1,30 @@
+:root {
+  --ifm-color-primary: #00c4b4;
+  --ifm-color-primary-dark: #00b0a1;
+  --ifm-color-primary-darker: #00a698;
+  --ifm-color-primary-darkest: #00897d;
+  --ifm-color-primary-light: #00d8c7;
+  --ifm-color-primary-lighter: #00e2d0;
+  --ifm-color-primary-lightest: #1ffff0;
+  --ifm-code-font-size: 90%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 196, 180, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #00c4b4;
+  --ifm-color-primary-dark: #00b0a1;
+  --ifm-color-primary-darker: #00a698;
+  --ifm-color-primary-darkest: #00897d;
+  --ifm-color-primary-light: #00d8c7;
+  --ifm-color-primary-lighter: #00e2d0;
+  --ifm-color-primary-lightest: #1ffff0;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 196, 180, 0.15);
+}
+
+/* Monospace flag names in tables */
+table code {
+  font-size: 85%;
+  background: var(--ifm-code-background);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
