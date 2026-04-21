@@ -1,0 +1,40 @@
+# TraderBro CLI Documentation
+
+TraderBro is a command-line tool for querying financial analyst predictions,
+return analytics, sector-level research, and content monitoring data.
+Designed for humans and AI agents. Always use --json for machine-readable output.
+
+## Key pages
+
+- [Get Started](/getting-started/installation): Installation and authentication
+- [CLI Reference](/cli-reference/overview): Complete command reference with flags, examples, and JSON output schemas
+- [Analyst Commands](/cli-reference/analyst): analyst list, get, predictions, sector-edge, sector-map
+- [Prediction Commands](/cli-reference/prediction): prediction list, get — with direction, date, and symbol filters
+- [Symbol Commands](/cli-reference/symbol): symbol list, search, mentions, predictions
+- [Content Commands](/cli-reference/content): content list, get — tweets, videos, articles
+- [Research Commands](/cli-reference/research): research list, get — published research articles
+- [Return Calculation](/concepts/return-calculation): How direction-adjusted returns and time windows work
+- [Accuracy Rate](/concepts/accuracy-rate): How directional accuracy is measured and when it appears
+- [Sector Edge](/concepts/sector-edge): Per-analyst sector and industry performance breakdown
+- [Finding Top Analysts](/guides/finding-top-analysts): Filter by country, period, accuracy, and return
+- [Sector Edge Research](/guides/sector-edge-research): Use sector-edge and sector-map for stock selection
+- [Scripting and Automation](/guides/scripting-and-automation): Shell scripts, cron jobs, jq pipelines
+- [Using with AI Agents](/guides/using-with-ai-agents): Prompts and patterns for Claude, GPT, and other AI assistants
+
+## Global flags (apply to all commands)
+
+--json          Output as JSON (use for all agent/script use)
+--plain         Tab-delimited output for shell pipelines
+--jq <expr>     Apply jq expression to JSON output (implies --json)
+--limit <n>     Items per page, default 25, max 100
+--page <n>      Page number, default 1
+--quiet / -q    Suppress non-essential stderr
+--verbose / -v  Show debug info on stderr
+
+## Exit codes
+
+0   Success
+2   Authentication failure
+3   Not found
+4   Validation error (bad flag value)
+5   Network error

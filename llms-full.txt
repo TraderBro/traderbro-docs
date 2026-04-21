@@ -1,0 +1,1980 @@
+---
+sidebar_position: 2
+title: analyst
+---
+
+# analyst
+
+Commands for querying analyst profiles, predictions, and sector performance.
+
+---
+
+## traderbro analyst list
+
+List all tracked analysts with performance metrics.
+
+### Usage
+
+```bash
+traderbro analyst list [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--sort` | string | `accuracy` | Sort by: `accuracy`, `return`, `predictions`, `name` |
+| `--period` | string | — | Return period for sort/display: `7d`, `1m`, `3m`, `6m`, `1y` |
+| `--country` | string | — | Filter by focus country (e.g. `US`, `BD`) |
+| `--asset-class` | string | — | Filter by asset class (e.g. `Equities`, `Crypto`) |
+| `--active` | bool | `true` | Only active analysts |
+| `--min-predictions` | int | `0` | Minimum prediction count |
+| `--min-return` | float | — | Minimum lifetime return % (e.g. `5` = 5%) |
+| `--min-accuracy` | float | `0` | Minimum accuracy % (e.g. `60` = 60%) |
+| `--sector` | string | — | Filter to analysts with calls in this sector (e.g. `Technology`) |
+| `--industry` | string | — | Filter to analysts with calls in this industry (e.g. `Semiconductors`) |
+
+### Examples
+
+```bash
+# Top 10 analysts by accuracy
+traderbro analyst list --sort accuracy --limit 10
+
+# Best 3-month return, US analysts, minimum 15 predictions
+traderbro analyst list --period 3m --sort return --country US --min-predictions 15
+
+# Analysts covering Technology sector with 5+ predictions, JSON output
+traderbro analyst list --sector Technology --min-predictions 5 --json
+
+# Analysts with ≥60% accuracy and positive returns
+traderbro analyst list --min-accuracy 60 --min-return 0.01 --json
+```
+
+### Output (Table mode)
+
+```
+Slug              Name            Accuracy   Predictions   Return %
+────────────────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  71.2%      42            +18.4%
+aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+```
+
+When `--sector` or `--industry` is used, the table shows segment-specific columns:
+
+```
+Slug              Name            Calls in Segment   Return % (Segment)
+────────────────────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  12                 +22.1%
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 47,
+  "next": null,
+  "results": [
+    {
+      "slug": "noLimitGains",
+      "name": "No Limit Gains",
+      "accuracy_rate": 71.2,
+      "predictions_count": 42,
+      "overall_return_pct": 18.4,
+      "avg_return_7d": null,
+      "avg_return_1m": 8.2,
+      "avg_return_3m": 12.1,
+      "avg_return_6m": 15.3,
+      "avg_return_1y": null,
+      "is_active": true
+    }
+  ]
+}
+```
+
+---
+
+## traderbro analyst get
+
+Get full analyst profile.
+
+### Usage
+
+```bash
+traderbro analyst get <slug> [flags]
+```
+
+### Examples
+
+```bash
+traderbro analyst get noLimitGains
+traderbro analyst get aleabitoreddit --json
+```
+
+### Output (Table mode)
+
+```
+Slug:         noLimitGains
+Name:         No Limit Gains
+Accuracy:     71.2%
+Predictions:  42
+Return %:     18.4%
+Active:       true
+Bio:          ...
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "slug": "noLimitGains",
+  "name": "No Limit Gains",
+  "accuracy_rate": 71.2,
+  "predictions_count": 42,
+  "overall_return_pct": 18.4,
+  "is_active": true,
+  "bio": "..."
+}
+```
+
+---
+
+## traderbro analyst predictions
+
+List predictions made by an analyst.
+
+### Usage
+
+```bash
+traderbro analyst predictions <slug> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--symbol` | string | — | Filter by ticker (e.g. `AAPL`) |
+| `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
+
+### Examples
+
+```bash
+traderbro analyst predictions noLimitGains
+traderbro analyst predictions aleabitoreddit --direction bullish --json
+traderbro analyst predictions crux_capital_ --symbol TSLA --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 42,
+  "results": [
+    {
+      "id": 101,
+      "symbol_ticker": "NVDA",
+      "direction": "bullish",
+      "confidence_score": 85,
+      "published_at": "2025-03-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## traderbro analyst sector-edge
+
+Show an analyst's return and accuracy breakdown by sector or industry.
+
+### Usage
+
+```bash
+traderbro analyst sector-edge <slug> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--group-by` | string | `sector` | Group by: `sector` or `industry` |
+| `--period` | string | `max` | Return period: `7d`, `1m`, `3m`, `6m`, `1y`, `max` |
+| `--min-calls` | int | `3` | Only show segments with at least N calls |
+
+### Examples
+
+```bash
+# Sector breakdown for 3-month returns
+traderbro analyst sector-edge noLimitGains --period 3m
+
+# Industry breakdown, minimum 5 calls per segment
+traderbro analyst sector-edge aleabitoreddit --group-by industry --min-calls 5
+
+# JSON for agent use
+traderbro analyst sector-edge crux_capital_ --period 1m --json
+```
+
+### Output (Table mode)
+
+```
+Sector          Calls   Accuracy %   Return % (3M)
+──────────────────────────────────────────────────
+Technology      14      78.6%        +24.3%
+Financials      8       62.5%        +9.1%
+Energy          3       66.7%        —
+```
+
+`—` means fewer than `--min-calls` or the return window has not matured for enough calls yet.
+
+### Output (JSON mode)
+
+```json
+{
+  "period": "3m",
+  "group_by": "sector",
+  "rows": [
+    {
+      "label": "Technology",
+      "calls": 14,
+      "accuracy": 78.6,
+      "avg_return": 24.3
+    }
+  ]
+}
+```
+
+---
+
+## traderbro analyst sector-map
+
+Show aggregate return and accuracy across **all analysts** by sector or industry.
+
+### Usage
+
+```bash
+traderbro analyst sector-map [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--level` | string | `sector` | Aggregation level: `sector` or `industry` |
+| `--period` | string | `max` | Return period: `7d`, `1m`, `3m`, `6m`, `1y`, `max` |
+| `--min-calls` | int | `3` | Only show segments with at least N total calls |
+| `--date-from` | string | — | Filter predictions published on or after (YYYY-MM-DD) |
+| `--date-to` | string | — | Filter predictions published on or before (YYYY-MM-DD) |
+
+### Examples
+
+```bash
+# Overall sector map
+traderbro analyst sector-map
+
+# Industry level, 3-month returns
+traderbro analyst sector-map --level industry --period 3m
+
+# Q1 2025 only
+traderbro analyst sector-map --date-from 2025-01-01 --date-to 2025-03-31
+
+# Top 5 sectors by return last month, JSON
+traderbro analyst sector-map --date-from 2025-03-01 --date-to 2025-03-31 --period 1m --json \
+  | jq '.rows | sort_by(-.avg_return) | .[0:5]'
+```
+
+### Output (Table mode)
+
+```
+Sector          Calls   Analysts   Accuracy %   Return % (Max)
+───────────────────────────────────────────────────────────────
+Technology      248     18         66.9%        +15.2%
+Financials      134     12         61.2%        +8.7%
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "level": "sector",
+  "period": "max",
+  "rows": [
+    {
+      "label": "Technology",
+      "calls": 248,
+      "analyst_count": 18,
+      "accuracy": 66.9,
+      "avg_return": 15.2
+    }
+  ]
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Analyst not found |
+| `4` | Validation error (invalid flag value) |
+| `5` | Network error |
+---
+sidebar_position: 5
+title: content
+---
+
+# content
+
+Commands for querying monitored analyst content — tweets, YouTube videos, Substack articles, and transcripts.
+
+---
+
+## traderbro content list
+
+List monitored content items with filtering options.
+
+### Usage
+
+```bash
+traderbro content list [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--analyst` | string | — | Filter by analyst slug |
+| `--source` | string | — | Filter by source: `twitter`, `youtube`, `substack` |
+| `--type` | string | — | Filter by content type: `tweet`, `video`, `article`, `transcript` |
+| `--relevant` | bool | false | Only content classified as market-relevant |
+| `--securities` | bool | false | Only content that mentions securities |
+| `--since` | string | — | Content published on or after (YYYY-MM-DD) |
+
+### Examples
+
+```bash
+# Recent Twitter content from a specific analyst
+traderbro content list --analyst noLimitGains --source twitter --limit 10 --json
+
+# Market-relevant content mentioning securities since Jan 2025
+traderbro content list --relevant --securities --since 2025-01-01 --json
+
+# All YouTube videos
+traderbro content list --source youtube --type video --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 150,
+  "results": [
+    {
+      "id": 501,
+      "content_type": "tweet",
+      "analyst_slug": "noLimitGains",
+      "title": "NVDA breaking out of consolidation...",
+      "published_date": "2025-03-15"
+    }
+  ]
+}
+```
+
+---
+
+## traderbro content get
+
+Get full content detail including symbol mentions.
+
+### Usage
+
+```bash
+traderbro content get <id> [flags]
+```
+
+### Examples
+
+```bash
+traderbro content get 501
+traderbro content get 501 --json
+```
+
+### Output (Table mode)
+
+```
+ID:        501
+Title:     NVDA breaking out of consolidation...
+URL:       https://twitter.com/...
+Type:      tweet
+Analyst:   noLimitGains
+Published: 2025-03-15
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "id": 501,
+  "title": "NVDA breaking out of consolidation...",
+  "url": "https://twitter.com/...",
+  "content_type": "tweet",
+  "analyst_slug": "noLimitGains",
+  "published_date": "2025-03-15"
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Content not found |
+| `4` | Validation error |
+| `5` | Network error |
+---
+sidebar_position: 1
+title: Overview
+---
+
+# CLI Reference Overview
+
+Every TraderBro command follows the same structure:
+
+```
+traderbro <command-group> <subcommand> [arguments] [flags]
+```
+
+## Command groups
+
+| Group | Description |
+|---|---|
+| [`analyst`](/cli-reference/analyst) | List analysts, get profiles, view predictions, sector edge, sector map |
+| [`prediction`](/cli-reference/prediction) | List and get individual analyst predictions |
+| [`symbol`](/cli-reference/symbol) | Search symbols, list mentions and predictions per symbol |
+| [`content`](/cli-reference/content) | Query monitored tweets, videos, and articles |
+| [`research`](/cli-reference/research) | Published research articles |
+| `sectors` | List available sectors and industries |
+| `configure` | Save server URL and API key to config file |
+| `whoami` | Verify authentication and show account info |
+| `describe` | Output a machine-readable schema of all commands |
+
+---
+
+## Global flags
+
+These flags apply to every command.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--json` | bool | false | Output as JSON |
+| `--plain` | bool | false | Tab-delimited output (no colors, no borders) |
+| `--jq <expr>` | string | — | Apply jq expression to JSON output (implies `--json`) |
+| `--limit <n>` | int | 25 | Items per page (max 100) |
+| `--page <n>` | int | 1 | Page number |
+| `--no-color` | bool | false | Disable colored output |
+| `--no-input` | bool | false | Disable interactive prompts |
+| `-q, --quiet` | bool | false | Suppress non-essential stderr |
+| `-v, --verbose` | bool | false | Show debug info on stderr |
+| `--server <url>` | string | from config | Override server URL |
+| `--key <key>` | string | from config | Override API key |
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Not found |
+| `4` | Validation error (bad flag value) |
+| `5` | Network error |
+
+---
+
+## Output modes
+
+**Table mode** (default): human-readable bordered table with color.
+
+**JSON mode** (`--json`): full API response as formatted JSON. Always use this for scripts and AI agents.
+
+**Plain mode** (`--plain`): tab-delimited, no colors or borders. Use for shell pipelines where JSON is too heavy.
+
+**jq mode** (`--jq '<expr>'`): applies a jq expression to the JSON output inline. Implies `--json`.
+
+```bash
+# Get just the slugs of the top 10 analysts
+traderbro analyst list --limit 10 --jq '.results[].slug'
+```
+---
+sidebar_position: 3
+title: prediction
+---
+
+# prediction
+
+Commands for querying analyst predictions across all tracked symbols.
+
+---
+
+## traderbro prediction list
+
+List analyst predictions with filtering and sorting options.
+
+### Usage
+
+```bash
+traderbro prediction list [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--symbol` | string | — | Filter by ticker (e.g. `AAPL`, `TSLA`) |
+| `--analyst` | string | — | Filter by analyst slug |
+| `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
+| `--since` | string | — | Predictions published on or after (YYYY-MM-DD) |
+| `--until` | string | — | Predictions published on or before (YYYY-MM-DD) |
+| `--correct` | string | — | Filter by correctness: `true` or `false` |
+| `--sort` | string | `date` | Sort by: `date`, `return`, `confidence` |
+
+### Examples
+
+```bash
+# All NVDA predictions
+traderbro prediction list --symbol NVDA --json
+
+# Bullish calls since January 2025
+traderbro prediction list --direction bullish --since 2025-01-01 --json
+
+# Predictions by a specific analyst on TSLA
+traderbro prediction list --analyst noLimitGains --symbol TSLA --json
+
+# Incorrect predictions sorted by worst return
+traderbro prediction list --correct false --sort return --json
+
+# Daily watchlist script
+for symbol in NVDA AMD MSFT; do
+  traderbro prediction list --symbol $symbol \
+    --since $(date -v-1d +%Y-%m-%d) --json
+done
+```
+
+### Output (Table mode)
+
+```
+ID    Analyst          Symbol   Direction   Return %   Correct   Published
+──────────────────────────────────────────────────────────────────────────
+101   No Limit Gains   NVDA     bullish     +22.4%     ✓         2025-03-15
+102   Alea Bitor       TSLA     bearish     +8.1%      ✓         2025-03-10
+103   Crux Capital     AAPL     bullish     -3.2%      ✗         2025-03-05
+```
+
+`—` in the Correct column means the prediction window has not matured yet.
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 234,
+  "next": "https://api.traderbro.com/...",
+  "results": [
+    {
+      "id": 101,
+      "analyst_name": "No Limit Gains",
+      "analyst_slug": "noLimitGains",
+      "symbol_ticker": "NVDA",
+      "direction": "bullish",
+      "confidence_score": 85,
+      "current_return_pct": 22.4,
+      "is_directionally_correct": true,
+      "published_at": "2025-03-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## traderbro prediction get
+
+Get full detail for a single prediction.
+
+### Usage
+
+```bash
+traderbro prediction get <id> [flags]
+```
+
+### Examples
+
+```bash
+traderbro prediction get 101
+traderbro prediction get 101 --json
+```
+
+### Output (Table mode)
+
+```
+ID:            101
+Analyst:       No Limit Gains
+Symbol:        NVDA
+Direction:     bullish
+Price Target:  $650
+Price at Call: $480
+Current Price: $585
+Return %:      +22.4%
+Confidence:    85%
+Source:        https://twitter.com/...
+Published:     2025-03-15T10:00:00Z
+Reasoning:     Strong AI demand, datacenter spending...
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "id": 101,
+  "analyst_name": "No Limit Gains",
+  "analyst_slug": "noLimitGains",
+  "symbol_ticker": "NVDA",
+  "direction": "bullish",
+  "stated_price_target": "650",
+  "price_at_prediction": 480.0,
+  "current_price": 585.0,
+  "current_return_pct": 22.4,
+  "confidence_score": 85,
+  "is_directionally_correct": true,
+  "source_url": "https://twitter.com/...",
+  "published_at": "2025-03-15T10:00:00Z",
+  "author_reasoning": "Strong AI demand..."
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Prediction not found |
+| `4` | Validation error |
+| `5` | Network error |
+---
+sidebar_position: 6
+title: research
+---
+
+# research
+
+Commands for querying published research articles on TraderBro.
+
+---
+
+## traderbro research list
+
+List published research articles.
+
+### Usage
+
+```bash
+traderbro research list [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--category` | string | — | Filter by category: `stock`, `industry`, `macro`, `earnings`, `outlook` |
+| `--country` | string | — | Filter by country code |
+| `--language` | string | — | Filter by language: `en`, `bn`, `hi`, `ur` |
+| `--featured` | bool | false | Only featured articles |
+
+### Examples
+
+```bash
+# Stock research in English
+traderbro research list --category stock --language en --json
+
+# Featured articles
+traderbro research list --featured --json
+
+# US market research
+traderbro research list --country us --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 28,
+  "results": [
+    {
+      "id": 10,
+      "slug": "nvda-q1-outlook",
+      "title": "NVDA Q1 2025 Outlook",
+      "category": "stock",
+      "author_display_name": "TraderBro Research",
+      "published_at": "2025-03-01T09:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## traderbro research get
+
+Get a full research article including excerpt.
+
+### Usage
+
+```bash
+traderbro research get <slug> [flags]
+```
+
+### Examples
+
+```bash
+traderbro research get nvda-q1-outlook
+traderbro research get nvda-q1-outlook --json
+```
+
+### Output (Table mode)
+
+```
+ID:        10
+Title:     NVDA Q1 2025 Outlook
+Slug:      nvda-q1-outlook
+Category:  stock
+Author:    TraderBro Research
+Published: 2025-03-01T09:00:00Z
+Excerpt:   Demand from hyperscalers continues to...
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "id": 10,
+  "slug": "nvda-q1-outlook",
+  "title": "NVDA Q1 2025 Outlook",
+  "category": "stock",
+  "author_display_name": "TraderBro Research",
+  "published_at": "2025-03-01T09:00:00Z",
+  "excerpt": "Demand from hyperscalers continues to..."
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Article not found |
+| `4` | Validation error |
+| `5` | Network error |
+---
+sidebar_position: 4
+title: symbol
+---
+
+# symbol
+
+Commands for searching and querying symbols tracked by TraderBro.
+
+---
+
+## traderbro symbol list
+
+List tracked symbols with prediction and mention counts.
+
+### Usage
+
+```bash
+traderbro symbol list [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--type` | string | — | Filter by type: `stock`, `etf`, `crypto` |
+| `--country` | string | — | Filter by country code (e.g. `US`, `BD`) |
+| `--sector` | string | — | Filter by sector |
+| `--search` | string | — | Search by name or ticker |
+| `--has-predictions` | bool | false | Only symbols with analyst predictions |
+
+### Examples
+
+```bash
+# All symbols with predictions
+traderbro symbol list --has-predictions --json
+
+# US stocks only
+traderbro symbol list --type stock --country US --json
+
+# Technology sector symbols
+traderbro symbol list --sector Technology --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 312,
+  "results": [
+    {
+      "id": 42,
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "symbol_type": "stock",
+      "country": "US",
+      "predictions_count": 18,
+      "mentions_count": 47
+    }
+  ]
+}
+```
+
+---
+
+## traderbro symbol search
+
+Search symbols by name or ticker.
+
+### Usage
+
+```bash
+traderbro symbol search <query> [flags]
+```
+
+### Examples
+
+```bash
+traderbro symbol search "Tesla" --json
+traderbro symbol search NVDA --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "id": 7,
+      "symbol": "TSLA",
+      "name": "Tesla, Inc.",
+      "symbol_type": "stock",
+      "country": "US"
+    }
+  ]
+}
+```
+
+---
+
+## traderbro symbol mentions
+
+List content mentions for a symbol (from tweets, videos, articles).
+
+### Usage
+
+```bash
+traderbro symbol mentions <id> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--type` | string | — | Filter by mention type |
+
+### Examples
+
+```bash
+traderbro symbol mentions 42 --json
+traderbro symbol mentions 42 --type prediction --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "results": [
+    {
+      "id": 201,
+      "mention_type": "prediction",
+      "direction": "bullish",
+      "confidence_score": 85,
+      "key_quote": "NVDA is a must-hold..."
+    }
+  ]
+}
+```
+
+---
+
+## traderbro symbol predictions
+
+List analyst predictions for a symbol.
+
+### Usage
+
+```bash
+traderbro symbol predictions <id> [flags]
+```
+
+### Examples
+
+```bash
+traderbro symbol predictions 42 --json
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "results": [
+    {
+      "id": 101,
+      "analyst_name": "No Limit Gains",
+      "direction": "bullish",
+      "stated_price_target": "650",
+      "confidence_score": 85,
+      "published_at": "2025-03-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure |
+| `3` | Symbol not found |
+| `4` | Validation error |
+| `5` | Network error |
+---
+sidebar_position: 2
+title: Accuracy Rate
+---
+
+# Accuracy Rate
+
+`accuracy_rate` measures the percentage of an analyst's predictions that were directionally correct.
+
+---
+
+## Definition
+
+A prediction is directionally correct if the price moved in the direction of the call by the end of the measurement window:
+
+- **Bullish call** → stock price is higher than at time of call → ✓ correct
+- **Bearish call** → stock price is lower than at time of call → ✓ correct
+
+The measurement window is 3 months by default.
+
+---
+
+## Minimum prediction threshold
+
+Accuracy is only shown when an analyst has **10 or more matured predictions**. Below this threshold, `accuracy_rate` is null.
+
+This prevents a single lucky call from showing a misleading 100% accuracy rate. An analyst with 3/3 correct is statistically indistinguishable from random; an analyst with 70/100 correct is not.
+
+---
+
+## What accuracy does not measure
+
+- **Magnitude** — an analyst can be 80% accurate with tiny returns, or 55% accurate with large returns. Always look at `overall_return_pct` alongside accuracy.
+- **Timing** — a bullish call is correct if the price is higher at window maturity, even if it dropped 20% before recovering.
+- **Conviction size** — all predictions are weighted equally regardless of the analyst's stated confidence.
+
+---
+
+## Accuracy vs return — which matters more?
+
+Neither alone is sufficient. The most useful signal is **high accuracy + high return**:
+
+| Accuracy | Return | Interpretation |
+|---|---|---|
+| High | High | Strong analyst with good magnitude calls |
+| High | Low | Correct direction but small moves |
+| Low | High | High-risk, high-reward style; volatile |
+| Low | Low | Poor signal overall |
+
+Use `--min-accuracy` and `--min-return` together to find analysts in the top-left quadrant:
+
+```bash
+traderbro analyst list --min-accuracy 65 --min-return 10 --min-predictions 20 --json
+```
+---
+sidebar_position: 3
+title: Prediction Model
+---
+
+# Prediction Model
+
+How TraderBro identifies, classifies, and tracks analyst predictions.
+
+---
+
+## What is a prediction?
+
+A prediction is a **directional call on a specific symbol at a specific point in time**, extracted from an analyst's content (tweet, video, article, or transcript).
+
+Each prediction has:
+- A **symbol** (e.g. `NVDA`)
+- A **direction**: `bullish`, `bearish`, or `neutral`
+- A **published date** — when the analyst made the call
+- An optional **price target** if stated
+- A **confidence score** (0–100) derived from the language used
+- An **author reasoning** excerpt
+
+---
+
+## Extraction pipeline
+
+Content passes through a two-stage LLM pipeline:
+
+1. **Triage** — determines whether the content contains a genuine directional prediction. Content that is purely commentary, reposting news, or "credit-taking" (claiming a prior call after the fact) is excluded.
+
+2. **Extraction** — identifies the symbol, direction, price target, confidence, and reasoning from the content.
+
+---
+
+## Credit-taking detection
+
+A common issue in social media analysis is analysts posting "I called this!" after a stock has already moved. TraderBro's triage stage is trained to detect and exclude these retroactive claims. Only forward-looking predictions count.
+
+---
+
+## Prediction series
+
+When an analyst makes repeated calls on the same symbol, these are grouped into a series:
+
+- `is_series_first: true` — the first call in a run; return credit starts here
+- `is_series_last: true` — the most recent call in an active series
+
+An analyst who posts "still bullish on NVDA" five times over three months gets credit for one prediction series, not five separate predictions. This prevents artificially inflating prediction count by reaffirming existing positions.
+
+---
+
+## Null fields
+
+Some fields may be null for valid reasons:
+
+| Field | Null means |
+|---|---|
+| `stated_price_target` | No specific target mentioned in the content |
+| `is_directionally_correct` | Return window has not matured yet |
+| `avg_return_3m` | Insufficient matured windows to calculate |
+| `accuracy_rate` | Fewer than 10 matured predictions |
+---
+sidebar_position: 1
+title: Return Calculation
+---
+
+# Return Calculation
+
+Understanding how TraderBro calculates returns is important for interpreting analyst performance correctly.
+
+---
+
+## Direction-adjusted return
+
+Raw price return is adjusted for the direction of the call so that a correct prediction always yields a positive number:
+
+| Call direction | Price move | Adjusted return |
+|---|---|---|
+| Bullish | +15% | **+15%** ✓ |
+| Bearish | -10% | **+10%** ✓ |
+| Bullish | -8% | **-8%** ✗ |
+| Bearish | +12% | **-12%** ✗ |
+
+This means you can compare returns across bullish and bearish calls on a single scale. An analyst who consistently calls direction correctly will show positive returns regardless of whether the market was rising or falling.
+
+---
+
+## Time windows
+
+Each prediction has return values calculated at fixed intervals after the prediction date:
+
+| Field | Window |
+|---|---|
+| `avg_return_7d` | 7 days after prediction |
+| `avg_return_1m` | 30 days after prediction |
+| `avg_return_3m` | 90 days after prediction |
+| `avg_return_6m` | 180 days after prediction |
+| `avg_return_1y` | 365 days after prediction |
+| `overall_return_pct` | Lifetime average across all matured windows |
+
+### When windows are null
+
+A return field is `null` when not enough of the analyst's predictions have reached that window yet. For example:
+- An analyst who made all their predictions 2 months ago will show values for `7d` and `1m` but `null` for `3m`, `6m`, and `1y`
+- `null` is not the same as 0 — it means the window hasn't matured, not that the return was zero
+
+---
+
+## First Call vs Follower Return
+
+When an analyst makes repeated predictions on the same symbol (a "series"), TraderBro attributes return credit to the first call in the series:
+
+- `is_series_first: true` — this is the anchoring prediction; return is calculated from this date
+- Subsequent calls in the series update the thesis but the performance clock started at the first call
+
+This prevents double-counting credit for an analyst who repeatedly reaffirms the same position.
+
+---
+
+## `overall_return_pct`
+
+This is the mean direction-adjusted return across all predictions that have at least one matured window. It is not a time-weighted portfolio return — it treats each prediction equally.
+
+An analyst with 30 predictions averaging +12% has made better directional calls on average than one with 30 predictions averaging +4%, regardless of the time period.
+
+---
+
+## Period return vs lifetime return
+
+When you pass `--period 3m` to `analyst list`, the sort and display column switches from `overall_return_pct` to `avg_return_3m`. This shows you which analysts have been most profitable specifically within the 3-month window — useful for finding analysts whose calls resolve quickly rather than analysts who have been correct over many years.
+---
+sidebar_position: 4
+title: Sector Edge
+---
+
+# Sector Edge
+
+Sector edge is a per-analyst breakdown of accuracy and return by sector or industry, showing where an analyst's expertise is concentrated.
+
+---
+
+## How sectors are assigned
+
+Each prediction inherits its sector and industry from the symbol at the time of ingestion. For example, NVDA is classified as Technology / Semiconductors. If a symbol's sector changes over time (rare), historical predictions retain the sector snapshot from when they were made.
+
+Sector values come from the `sectors list` command:
+
+```bash
+traderbro sectors list
+traderbro sectors industries Technology
+```
+
+Use these exact strings when filtering by `--sector` or `--industry`.
+
+---
+
+## Minimum call threshold
+
+Segments with fewer than `--min-calls` (default: 3) calls are hidden. A single correct call in a sector is not enough to establish edge — it could be luck. Three or more calls provides a minimal signal.
+
+Increase the threshold for more confidence:
+
+```bash
+traderbro analyst sector-edge noLimitGains --min-calls 5 --period 3m
+```
+
+---
+
+## Interpreting the output
+
+| Accuracy | Return | Interpretation |
+|---|---|---|
+| High | High | Genuine edge — analyst understands this sector deeply |
+| High | Low | Correct direction but small moves; may be a conservative sector |
+| Low | High | High-risk style in this sector; volatile outcomes |
+| Low | Low | No edge here; avoid this analyst's calls in this sector |
+| — | — | Fewer than min-calls, or windows not yet matured |
+
+---
+
+## Sector edge vs sector map
+
+| Command | What it shows |
+|---|---|
+| `analyst sector-edge <slug>` | One analyst's breakdown across sectors |
+| `analyst sector-map` | All analysts' aggregate performance per sector |
+
+Use `sector-edge` to evaluate a specific analyst. Use `sector-map` to find which sectors the entire TraderBro analyst pool performs best in.
+
+---
+
+## Practical workflow
+
+Before acting on a call from a new analyst:
+
+```bash
+# 1. Check their overall profile
+traderbro analyst get the-analyst-slug --json
+
+# 2. Check their sector edge in the relevant sector
+traderbro analyst sector-edge the-analyst-slug --group-by industry --period 3m
+
+# 3. If edge confirmed, see their recent calls on the symbol
+traderbro analyst predictions the-analyst-slug --symbol NVDA --json
+```
+---
+sidebar_position: 2
+title: Authentication
+---
+
+# Authentication
+
+TraderBro uses API keys to authenticate all requests.
+
+## Step 1 — Generate an API key
+
+1. Log in at [app.traderbro.com](https://app.traderbro.com)
+2. Go to **Settings → API Keys**
+3. Click **Generate New Key**
+4. Copy the key — it starts with `tb_sk_`
+
+## Step 2 — Configure the CLI
+
+Run the interactive setup:
+
+```bash
+traderbro configure --server https://api.traderbro.com --key tb_sk_YOUR_KEY_HERE
+```
+
+This saves your credentials to `~/.traderbro/config.yaml`.
+
+## Step 3 — Verify
+
+```bash
+traderbro whoami
+```
+
+You should see your account details:
+
+```
+Email:    you@example.com
+Plan:     Pro
+```
+
+---
+
+## Environment variables
+
+For CI pipelines, scripts, and AI agents, use environment variables instead of the config file:
+
+```bash
+export TRADERBRO_SERVER="https://api.traderbro.com"
+export TRADERBRO_API_KEY="tb_sk_..."
+```
+
+Environment variables take precedence over the config file.
+
+## Per-command key override
+
+You can override credentials for a single command using global flags:
+
+```bash
+traderbro analyst list --server https://api.traderbro.com --key tb_sk_... --json
+```
+
+---
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| `exit code 2` | Authentication failure | Check your API key is valid and not expired |
+| `loading config: ...` | Config file missing | Run `traderbro configure` |
+| Connection refused | Wrong server URL | Confirm `--server` points to `https://api.traderbro.com` |
+
+Next: [First Command](/getting-started/first-command)
+---
+sidebar_position: 3
+title: First Command
+---
+
+# Your First Command
+
+Once you've [authenticated](/getting-started/authentication), try these commands in order.
+
+## See top analysts
+
+```bash
+traderbro analyst list --sort accuracy --limit 10
+```
+
+Output:
+
+```
+Slug              Name            Accuracy   Predictions   Return %
+────────────────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  71.2%      42            +18.4%
+aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+...
+```
+
+## Get a full analyst profile
+
+```bash
+traderbro analyst get noLimitGains
+```
+
+## See predictions for a stock
+
+```bash
+traderbro prediction list --symbol NVDA --limit 5
+```
+
+## Filter for bullish calls only
+
+```bash
+traderbro prediction list --symbol NVDA --direction bullish --json
+```
+
+---
+
+## JSON output
+
+Add `--json` to any command for machine-readable output — use this for scripts and AI agents:
+
+```bash
+traderbro analyst list --sort accuracy --limit 5 --json
+```
+
+```json
+{
+  "count": 47,
+  "next": "https://api.traderbro.com/...",
+  "results": [
+    {
+      "slug": "noLimitGains",
+      "name": "No Limit Gains",
+      "accuracy_rate": 71.2,
+      "predictions_count": 42,
+      "overall_return_pct": 18.4
+    }
+  ]
+}
+```
+
+## Inline filtering with `--jq`
+
+```bash
+# Just names and accuracy
+traderbro analyst list --limit 10 --jq '.results[] | {slug, accuracy_rate}'
+```
+
+---
+
+You're ready. Browse the [CLI Reference](/cli-reference/overview) for every command and flag, or jump to a [Guide](/guides/finding-top-analysts) for a task-based walkthrough.
+---
+sidebar_position: 1
+title: Installation
+---
+
+# Installation
+
+## macOS / Linux — Homebrew
+
+```bash
+brew install traderbro/tap/traderbro
+```
+
+Verify:
+
+```bash
+traderbro --version
+```
+
+## Linux — Shell script
+
+```bash
+curl -fsSL https://install.traderbro.com | sh
+```
+
+The script detects your architecture (amd64 / arm64) and installs the correct binary to `/usr/local/bin`.
+
+## Windows — Scoop
+
+```powershell
+scoop bucket add traderbro https://github.com/traderbro/scoop-traderbro
+scoop install traderbro
+```
+
+## Direct download
+
+Pre-built binaries for all platforms are available on the [GitHub releases page](https://github.com/traderbro/traderbro-cli-binary/releases). Download the binary for your OS and architecture, make it executable, and move it to a directory on your `PATH`.
+
+```bash
+# Example for Linux amd64
+chmod +x traderbro-linux-amd64
+mv traderbro-linux-amd64 /usr/local/bin/traderbro
+```
+
+## Verify installation
+
+```bash
+traderbro --version
+```
+
+You should see output like:
+
+```
+traderbro version 1.0.0
+```
+
+Next: [Authentication](/getting-started/authentication)
+---
+sidebar_position: 3
+title: Filtering by Period
+---
+
+# Filtering by Period
+
+The `--period` flag controls which return window is used for sorting and display. Choosing the right period depends on your trading style.
+
+---
+
+## Available periods
+
+| Period | Value | Use for |
+|---|---|---|
+| 7 days | `7d` | Very short-term, momentum traders |
+| 1 month | `1m` | Swing traders, short thesis |
+| 3 months | `3m` | Medium-term, most general-purpose |
+| 6 months | `6m` | Longer thesis, sector rotation |
+| 1 year | `1y` | Long-term investors |
+| Lifetime/max | *(omit flag)* | All-time performance |
+
+---
+
+## How period return is calculated
+
+A prediction's period return is the direction-adjusted price change from the date of the call to the end of the window.
+
+- A **bullish** call on a stock that rose 15% in 3 months = `+15%`
+- A **bearish** call on a stock that fell 10% in 1 month = `+10%` (correct direction, positive return)
+- A **bullish** call on a stock that fell 8% in 3 months = `-8%` (wrong direction)
+
+See [Return Calculation](/concepts/return-calculation) for the full methodology.
+
+---
+
+## Why period return can be null
+
+`avg_return_3m: null` means not enough of the analyst's predictions have had their 3-month window mature yet. A new analyst with 10 predictions all made 2 months ago will show null for `3m`, `6m`, and `1y` — but will show a value for `7d` and `1m`.
+
+As windows mature, these fields populate automatically.
+
+---
+
+## Picking the right period for your strategy
+
+**Day/momentum trading** — `7d` is barely useful here; the CLI is better suited for swing to medium-term.
+
+**Swing trading** — `1m` tells you which analysts make calls that resolve profitably within a month. Good for identifying analysts who trade catalysts (earnings, product launches).
+
+**General use** — `3m` is the most balanced. Long enough that most predictions have matured, short enough to reflect recent performance rather than years-old data.
+
+**Sector rotation / macro** — `6m` or `1y`. Analysts with strong 6-month returns tend to identify structural trends early rather than just reacting to news.
+
+---
+
+## Examples
+
+```bash
+# Analysts best suited for 3-month swing trades
+traderbro analyst list --period 3m --sort return --min-predictions 10
+
+# Short-term momentum — 1-month return, US-only
+traderbro analyst list --period 1m --sort return --country US
+
+# Long-term — 1-year return, 20+ predictions
+traderbro analyst list --period 1y --sort return --min-predictions 20
+```
+---
+sidebar_position: 1
+title: Finding Top Analysts
+---
+
+# Finding Top Analysts
+
+This guide walks through the most useful combinations of filters for discovering analysts worth following.
+
+---
+
+## Start with accuracy
+
+The default sort. Gets you analysts with the highest directional hit rate:
+
+```bash
+traderbro analyst list --sort accuracy --limit 20
+```
+
+Accuracy alone is not enough — an analyst with 10 predictions at 80% accuracy is less meaningful than one with 100 predictions at 70%.
+
+Add a minimum prediction count:
+
+```bash
+traderbro analyst list --sort accuracy --min-predictions 20 --limit 20
+```
+
+---
+
+## Sort by return instead
+
+Accuracy measures whether calls are directionally correct. Return measures how much money those calls would have made:
+
+```bash
+traderbro analyst list --sort return --min-predictions 15 --limit 10
+```
+
+A high-return analyst who is only 55% accurate may still outperform a 75% accurate analyst with low-magnitude calls.
+
+---
+
+## Use a time window
+
+Return and accuracy sorted over a specific period:
+
+```bash
+# Best analysts by 3-month return
+traderbro analyst list --period 3m --sort return --min-predictions 10
+
+# 1-month window — useful for swing traders
+traderbro analyst list --period 1m --sort return --min-predictions 5
+```
+
+The `--period` flag changes which return column is used for both display and sorting. Without `--period`, lifetime return is used.
+
+See [Filtering by Period](/guides/filtering-by-period) for a full explanation of what each window means.
+
+---
+
+## Filter by country
+
+```bash
+# US-focused analysts
+traderbro analyst list --country US --sort accuracy --min-predictions 20
+
+# Bangladesh market analysts
+traderbro analyst list --country BD --sort return
+```
+
+---
+
+## Filter by sector coverage
+
+Find analysts who have made calls specifically in a sector:
+
+```bash
+traderbro analyst list --sector Technology --sort return --min-predictions 5 --json
+traderbro analyst list --industry Semiconductors --min-predictions 3 --json
+```
+
+The return shown in sector/industry mode is the analyst's return within that segment, not their overall return.
+
+---
+
+## Combine filters
+
+```bash
+# US Technology analysts, 3-month return, ≥15 predictions, ≥60% accuracy
+traderbro analyst list \
+  --country US \
+  --sector Technology \
+  --period 3m \
+  --sort return \
+  --min-predictions 15 \
+  --min-accuracy 60 \
+  --json
+```
+
+---
+
+## Pipe into sector-edge
+
+Once you have a shortlist, drill into sector performance for each:
+
+```bash
+traderbro analyst list --period 3m --sort return --limit 5 --jq '.results[].slug' \
+  | xargs -I{} traderbro analyst sector-edge {} --period 3m --json
+```
+
+See [Sector Edge Research](/guides/sector-edge-research) for more.
+---
+sidebar_position: 4
+title: Scripting and Automation
+---
+
+# Scripting and Automation
+
+The CLI is designed for shell scripting. Use `--json` for structured output and `--plain` for tab-delimited pipelines.
+
+---
+
+## Daily watchlist check
+
+Check for new predictions on your symbols every morning:
+
+```bash
+#!/bin/bash
+YESTERDAY=$(date -v-1d +%Y-%m-%d)   # macOS
+# YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)  # Linux
+
+for symbol in NVDA AMD MSFT TSLA; do
+  echo "=== $symbol ==="
+  traderbro prediction list \
+    --symbol $symbol \
+    --since $YESTERDAY \
+    --json \
+    | jq '.results[] | {analyst: .analyst_name, direction, confidence: .confidence_score}'
+done
+```
+
+---
+
+## Find top analysts and get their sector edge
+
+```bash
+#!/bin/bash
+# Get top 5 analysts by 3-month return, then get their Technology edge
+
+traderbro analyst list \
+  --period 3m --sort return --min-predictions 10 --limit 5 \
+  --jq '.results[].slug' \
+| while read slug; do
+    echo "=== $slug ==="
+    traderbro analyst sector-edge "$slug" \
+      --period 3m --group-by industry --json \
+      | jq '.rows[] | select(.label == "Semiconductors")'
+  done
+```
+
+---
+
+## Tab-delimited output with `--plain`
+
+`--plain` outputs tab-separated values with no colors or table borders. Suitable for `awk`, `cut`, and CSV pipelines:
+
+```bash
+traderbro analyst list --plain | awk -F'\t' '{print $1, $3}'
+```
+
+---
+
+## Inline filtering with `--jq`
+
+`--jq` applies a jq expression directly — no need to pipe through `jq`:
+
+```bash
+# Just slugs
+traderbro analyst list --jq '.results[].slug'
+
+# Slugs and accuracy as CSV
+traderbro analyst list --jq '.results[] | [.slug, .accuracy_rate] | @csv'
+
+# Predictions for NVDA, bullish only, return > 10%
+traderbro prediction list --symbol NVDA --direction bullish --json \
+  | jq '.results[] | select(.current_return_pct > 10)'
+```
+
+---
+
+## Cron job pattern
+
+Run a nightly summary and save to a file:
+
+```cron
+0 6 * * * traderbro analyst list --period 3m --sort return --limit 20 --json \
+  > /tmp/traderbro-morning-$(date +\%Y-\%m-\%d).json
+```
+
+---
+
+## Using environment variables in scripts
+
+No config file needed in CI or containerised environments:
+
+```bash
+export TRADERBRO_SERVER="https://api.traderbro.com"
+export TRADERBRO_API_KEY="tb_sk_..."
+
+traderbro analyst list --json
+```
+
+---
+
+## Exit code checking
+
+```bash
+traderbro analyst get unknown-analyst
+if [ $? -eq 3 ]; then
+  echo "Analyst not found"
+fi
+```
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Auth failure |
+| `3` | Not found |
+| `4` | Bad flag value |
+| `5` | Network error |
+---
+sidebar_position: 2
+title: Sector Edge Research
+---
+
+# Sector Edge Research
+
+An analyst who is great overall may be mediocre in specific sectors. Sector edge tells you exactly where their expertise is concentrated.
+
+---
+
+## Why sector edge matters
+
+Two analysts may both have 65% accuracy lifetime. But one might be 80% accurate in Technology and 45% in Energy, while the other is consistently 65% across all sectors. Before acting on a tech call, you want to know which category each analyst falls into.
+
+---
+
+## Getting sector edge for a single analyst
+
+```bash
+traderbro analyst sector-edge noLimitGains --period 3m
+```
+
+Output:
+
+```
+Sector          Calls   Accuracy %   Return % (3M)
+──────────────────────────────────────────────────
+Technology      14      78.6%        +24.3%
+Financials      8       62.5%        +9.1%
+Energy          3       —            —
+```
+
+`—` appears when there are fewer calls than `--min-calls` (default 3) or return windows haven't matured.
+
+## Switch to industry-level breakdown
+
+```bash
+traderbro analyst sector-edge noLimitGains --group-by industry --period 3m
+```
+
+```
+Industry            Calls   Accuracy %   Return % (3M)
+──────────────────────────────────────────────────────
+Semiconductors      9       88.9%        +31.2%
+Software            5       60.0%        +14.1%
+Banks               4       75.0%        +7.3%
+```
+
+---
+
+## Using sector edge for stock selection
+
+**Workflow:** Before acting on an analyst's call on a tech stock, check their Technology sector edge first.
+
+```bash
+# Step 1: Get the analyst's tech sector edge (6-month window)
+traderbro analyst sector-edge aleabitoreddit --sector Technology --period 6m --json
+
+# Step 2: If strong edge confirmed, get their recent NVDA predictions
+traderbro analyst predictions aleabitoreddit --symbol NVDA --json
+```
+
+---
+
+## Cross-analyst sector map
+
+To see which sectors analysts are best at *in aggregate*:
+
+```bash
+traderbro analyst sector-map --period 3m
+```
+
+```
+Sector          Calls   Analysts   Accuracy %   Return % (3M)
+───────────────────────────────────────────────────────────────
+Technology      248     18         66.9%        +15.2%
+Financials      134     12         61.2%        +8.7%
+Energy          87      9          58.6%        +4.1%
+```
+
+This tells you which sectors the TraderBro analyst pool has the most reliable signal in overall — useful for knowing which types of calls to trust most.
+
+## Date-scoped sector map
+
+```bash
+# How did analysts perform in Q1 2025?
+traderbro analyst sector-map \
+  --date-from 2025-01-01 --date-to 2025-03-31 \
+  --period 3m --json \
+  | jq '.rows | sort_by(-.avg_return) | .[0:5]'
+```
+
+---
+
+## Discover available sectors
+
+```bash
+traderbro sectors list
+traderbro sectors industries Technology
+```
+
+Use the exact strings returned here as values for `--sector` and `--industry` flags.
+---
+sidebar_position: 5
+title: Using with AI Agents
+---
+
+# Using with AI Agents
+
+The TraderBro CLI is designed to be driven by AI assistants. Every command supports `--json` for machine-readable output. The flag tables and JSON schemas in this documentation are structured so AI models can parse them reliably.
+
+---
+
+## Setup for Claude Code
+
+Install the `SKILL.md` into your Claude Code session to give Claude full knowledge of every command:
+
+```bash
+# In your project, point Claude Code to the SKILL.md from the CLI repo
+# Or set TRADERBRO_API_KEY in your environment and run:
+traderbro whoami --json
+```
+
+Once Claude Code knows the CLI is available, you can ask it directly:
+
+> "Use the traderbro CLI to find the top 5 analysts by 3-month return with at least 20 predictions, then get their sector edge in Technology."
+
+Claude will chain these commands automatically:
+
+```bash
+traderbro analyst list --period 3m --sort return --min-predictions 20 --limit 5 --json
+traderbro analyst sector-edge <slug> --sector Technology --period 3m --json
+```
+
+---
+
+## Copy-pasteable prompts
+
+These prompts work with Claude, GPT-4, and similar AI assistants that have CLI access.
+
+**Find top analysts:**
+> "Run `traderbro analyst list --sort accuracy --min-predictions 20 --limit 10 --json` and tell me which analysts have the best combination of accuracy and return."
+
+**Sector-specific research:**
+> "Find analysts with strong Technology sector edge using `traderbro analyst sector-edge <slug> --period 3m --group-by industry --json`. Check the top 3 analysts by accuracy."
+
+**Symbol sentiment check:**
+> "Get all NVDA predictions from the last 7 days using `traderbro prediction list --symbol NVDA --since <date> --json` and summarise the bull/bear sentiment."
+
+**Period comparison:**
+> "Compare the top 10 analysts by 1-month return vs 3-month return. Use `traderbro analyst list --period 1m --sort return --limit 10 --json` and `traderbro analyst list --period 3m --sort return --limit 10 --json`."
+
+---
+
+## Always use `--json` with AI agents
+
+Table output is for human reading. JSON gives the AI the full data structure it needs to reason over results:
+
+```bash
+# Bad for agents — truncated table, no numeric precision
+traderbro analyst list --limit 10
+
+# Good for agents — full structured data
+traderbro analyst list --limit 10 --json
+```
+
+---
+
+## Pagination in agentic loops
+
+For large result sets, use `--limit` and `--page` to paginate:
+
+```bash
+traderbro prediction list --symbol NVDA --json --limit 50 --page 1
+traderbro prediction list --symbol NVDA --json --limit 50 --page 2
+```
+
+The JSON response includes `count` and `next` fields. Ask the AI to stop paginating when `next` is null.
+
+---
+
+## Machine-readable schema
+
+To give an AI a complete map of all commands and flags without reading the docs:
+
+```bash
+traderbro describe --json
+```
+
+This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously.
+---
+slug: /
+sidebar_position: 1
+title: TraderBro CLI
+---
+
+# TraderBro CLI
+
+Query analyst predictions, returns, sector analytics, and research — from your terminal.
+
+```bash
+traderbro analyst list --sort accuracy --limit 10 --json
+traderbro analyst sector-edge noLimitGains --period 3m
+traderbro prediction list --symbol NVDA --since 2025-01-01 --json
+```
+
+Designed for both humans and AI agents. Every command supports `--json` for machine-readable output and `--jq` for inline filtering.
+
+---
+
+## Quick navigation
+
+| I want to… | Go to |
+|---|---|
+| Install the CLI | [Installation](/getting-started/installation) |
+| Set up my API key | [Authentication](/getting-started/authentication) |
+| Run my first command | [First Command](/getting-started/first-command) |
+| See all analyst flags | [Analyst Reference](/cli-reference/analyst) |
+| Find top analysts by 3-month return | [Finding Top Analysts](/guides/finding-top-analysts) |
+| Understand how returns are calculated | [Return Calculation](/concepts/return-calculation) |
+| Use TraderBro with Claude or GPT | [Using with AI Agents](/guides/using-with-ai-agents) |
+
+---
+
+## What you can do
+
+- **Rank analysts** by accuracy, return, or prediction count across any time window (7d, 1m, 3m, 6m, 1y)
+- **Drill into sector edge** — see which sectors an analyst consistently outperforms in
+- **Browse predictions** — filter by symbol, direction, date range, and correctness
+- **Monitor content** — query the tweets, videos, and articles that feed the prediction pipeline
+- **Search symbols** — find any stock, ETF, or crypto tracked by TraderBro
+
+---
+
+## Installation
+
+```bash
+brew install traderbro/tap/traderbro
+traderbro configure
+traderbro whoami
+```
+
+See [Installation](/getting-started/installation) for all platforms and options.
