@@ -1265,8 +1265,11 @@ traderbro whoami
 You should see your account details:
 
 ```
+User:     you@example.com
 Email:    you@example.com
-Plan:     Pro
+Key:      tb_sk_… (my-key)
+Key ID:   42
+Server:   https://traderbro.ai
 ```
 
 ---
@@ -1399,41 +1402,30 @@ Verify:
 traderbro --version
 ```
 
-## Linux — Shell script
-
-```bash
-curl -fsSL https://install.traderbro.ai | sh
-```
-
-The script detects your architecture (amd64 / arm64) and installs the correct binary to `/usr/local/bin`.
-
-## Windows — Scoop
-
-```powershell
-scoop bucket add traderbro https://github.com/traderbro/scoop-traderbro
-scoop install traderbro
-```
-
 ## Direct download
 
-Pre-built binaries for all platforms are available on the [GitHub releases page](https://github.com/traderbro/traderbro-cli-binary/releases). Download the binary for your OS and architecture, make it executable, and move it to a directory on your `PATH`.
+Pre-built binaries for all platforms are available on the [GitHub releases page](https://github.com/TraderBro/traderbro-cli-binary/releases).
 
 ```bash
-# Example for Linux amd64
-chmod +x traderbro-linux-amd64
-mv traderbro-linux-amd64 /usr/local/bin/traderbro
+# macOS — Apple Silicon (arm64)
+curl -fsSL https://github.com/TraderBro/traderbro-cli-binary/releases/download/latest/traderbro_darwin_arm64.tar.gz | tar -xz && sudo mv traderbro /usr/local/bin/
+
+# macOS — Intel (amd64)
+curl -fsSL https://github.com/TraderBro/traderbro-cli-binary/releases/download/latest/traderbro_darwin_amd64.tar.gz | tar -xz && sudo mv traderbro /usr/local/bin/
+
+# Linux — x86_64 (amd64)
+curl -fsSL https://github.com/TraderBro/traderbro-cli-binary/releases/download/latest/traderbro_linux_amd64.tar.gz | tar -xz && sudo mv traderbro /usr/local/bin/
+
+# Linux — ARM64
+curl -fsSL https://github.com/TraderBro/traderbro-cli-binary/releases/download/latest/traderbro_linux_arm64.tar.gz | tar -xz && sudo mv traderbro /usr/local/bin/
 ```
+
+For Windows, download [traderbro_windows_amd64.zip](https://github.com/TraderBro/traderbro-cli-binary/releases/download/latest/traderbro_windows_amd64.zip), extract, and add `traderbro.exe` to your `PATH`.
 
 ## Verify installation
 
 ```bash
 traderbro --version
-```
-
-You should see output like:
-
-```
-traderbro version 1.0.0
 ```
 
 Next: [Authentication](/getting-started/authentication)
