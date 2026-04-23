@@ -33,8 +33,11 @@ traderbro whoami
 You should see your account details:
 
 ```
+User:     you@example.com
 Email:    you@example.com
-Plan:     Pro
+Key:      tb_sk_… (my-key)
+Key ID:   42
+Server:   https://traderbro.ai
 ```
 
 ---
