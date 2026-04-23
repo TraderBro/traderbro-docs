@@ -582,7 +582,7 @@ ID    Analyst          Symbol   Direction   Return %   Correct   Published
 ```json
 {
   "count": 234,
-  "next": "https://api.traderbro.com/...",
+  "next": "https://api.traderbro.ai/...",
   "results": [
     {
       "id": 101,
@@ -1251,7 +1251,7 @@ TraderBro uses API keys to authenticate all requests.
 Run the interactive setup:
 
 ```bash
-traderbro configure --server https://api.traderbro.com --key tb_sk_YOUR_KEY_HERE
+traderbro configure --server https://api.traderbro.ai --key tb_sk_YOUR_KEY_HERE
 ```
 
 This saves your credentials to `~/.traderbro/config.yaml`.
@@ -1276,7 +1276,7 @@ Plan:     Pro
 For CI pipelines, scripts, and AI agents, use environment variables instead of the config file:
 
 ```bash
-export TRADERBRO_SERVER="https://api.traderbro.com"
+export TRADERBRO_SERVER="https://api.traderbro.ai"
 export TRADERBRO_API_KEY="tb_sk_..."
 ```
 
@@ -1287,7 +1287,7 @@ Environment variables take precedence over the config file.
 You can override credentials for a single command using global flags:
 
 ```bash
-traderbro analyst list --server https://api.traderbro.com --key tb_sk_... --json
+traderbro analyst list --server https://api.traderbro.ai --key tb_sk_... --json
 ```
 
 ---
@@ -1298,7 +1298,7 @@ traderbro analyst list --server https://api.traderbro.com --key tb_sk_... --json
 |---|---|---|
 | `exit code 2` | Authentication failure | Check your API key is valid and not expired |
 | `loading config: ...` | Config file missing | Run `traderbro configure` |
-| Connection refused | Wrong server URL | Confirm `--server` points to `https://api.traderbro.com` |
+| Connection refused | Wrong server URL | Confirm `--server` points to `https://api.traderbro.ai` |
 
 Next: [First Command](/getting-started/first-command)
 ---
@@ -1357,7 +1357,7 @@ traderbro analyst list --sort accuracy --limit 5 --json
 ```json
 {
   "count": 47,
-  "next": "https://api.traderbro.com/...",
+  "next": "https://api.traderbro.ai/...",
   "results": [
     {
       "slug": "noLimitGains",
@@ -1402,7 +1402,7 @@ traderbro --version
 ## Linux — Shell script
 
 ```bash
-curl -fsSL https://install.traderbro.com | sh
+curl -fsSL https://install.traderbro.ai | sh
 ```
 
 The script detects your architecture (amd64 / arm64) and installs the correct binary to `/usr/local/bin`.
@@ -1710,7 +1710,7 @@ Run a nightly summary and save to a file:
 No config file needed in CI or containerised environments:
 
 ```bash
-export TRADERBRO_SERVER="https://api.traderbro.com"
+export TRADERBRO_SERVER="https://api.traderbro.ai"
 export TRADERBRO_API_KEY="tb_sk_..."
 
 traderbro analyst list --json
