@@ -70,7 +70,7 @@ ID    Analyst          Symbol   Direction   Return %   Correct   Published
 ```json
 {
   "count": 234,
-  "next": "https://api.traderbro.ai/...",
+  "next": "https://traderbro.ai/...",
   "results": [
     {
       "id": 101,

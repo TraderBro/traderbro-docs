@@ -93,7 +93,7 @@ Run a nightly summary and save to a file:
 No config file needed in CI or containerised environments:
 
 ```bash
-export TRADERBRO_SERVER="https://api.traderbro.ai"
+export TRADERBRO_SERVER="https://traderbro.ai"
 export TRADERBRO_API_KEY="tb_sk_..."
 
 traderbro analyst list --json

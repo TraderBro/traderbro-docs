@@ -54,7 +54,7 @@ traderbro analyst list --sort accuracy --limit 5 --json
 ```json
 {
   "count": 47,
-  "next": "https://api.traderbro.ai/...",
+  "next": "https://traderbro.ai/...",
   "results": [
     {
       "slug": "noLimitGains",
