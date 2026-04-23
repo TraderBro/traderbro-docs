@@ -71,7 +71,7 @@ const config = {
             position: 'left',
           },
           {
-            href: 'https://app.traderbro.com',
+            href: 'https://traderbro.ai',
             label: 'Open App',
             position: 'right',
           },
@@ -96,7 +96,7 @@ const config = {
           {
             title: 'More',
             items: [
-              { label: 'TraderBro App', href: 'https://app.traderbro.com' },
+              { label: 'TraderBro App', href: 'https://traderbro.ai' },
               { label: 'GitHub', href: 'https://github.com/traderbro/traderbro-cli-binary' },
             ],
           },

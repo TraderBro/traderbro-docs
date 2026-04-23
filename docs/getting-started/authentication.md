@@ -9,7 +9,7 @@ TraderBro uses API keys to authenticate all requests.
 
 ## Step 1 — Generate an API key
 
-1. Log in at [app.traderbro.com](https://app.traderbro.com)
+1. Log in at [traderbro.ai](https://traderbro.ai)
 2. Go to **Settings → API Keys**
 3. Click **Generate New Key**
 4. Copy the key — it starts with `tb_sk_`
