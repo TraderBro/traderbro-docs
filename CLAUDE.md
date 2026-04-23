@@ -46,5 +46,5 @@ PATH="/opt/homebrew/opt/node@22/bin:$PATH" npm run clear
 
 ## Deployment
 
-- Hosted on: GitHub Pages (`docs.traderbro.com`)
+- Hosted on: GitHub Pages (`docs.traderbro.ai`)
 - Trigger: Automatic via GitHub Actions on push to `main` branch.

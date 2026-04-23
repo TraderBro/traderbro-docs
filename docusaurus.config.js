@@ -6,7 +6,7 @@ const config = {
   title: 'TraderBro CLI',
   tagline: 'Analyst predictions, returns, and sector analytics — from your terminal',
   favicon: 'img/favicon.ico',
-  url: 'https://docs.traderbro.com',
+  url: 'https://docs.traderbro.ai',
   baseUrl: '/',
   organizationName: 'traderbro',
   projectName: 'traderbro-docs',

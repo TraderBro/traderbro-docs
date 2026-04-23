@@ -20,7 +20,7 @@ traderbro --version
 ## Linux — Shell script
 
 ```bash
-curl -fsSL https://install.traderbro.com | sh
+curl -fsSL https://install.traderbro.ai | sh
 ```
 
 The script detects your architecture (amd64 / arm64) and installs the correct binary to `/usr/local/bin`.

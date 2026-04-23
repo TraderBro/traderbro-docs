@@ -1,8 +1,8 @@
 # traderbro-docs
 
-Documentation site for the [TraderBro CLI](https://docs.traderbro.com) — a command-line tool for querying analyst predictions, return analytics, and sector research.
+Documentation site for the [TraderBro CLI](https://docs.traderbro.ai) — a command-line tool for querying analyst predictions, return analytics, and sector research.
 
-Live at: **[docs.traderbro.com](https://docs.traderbro.com)**
+Live at: **[docs.traderbro.ai](https://docs.traderbro.ai)**
 
 ---
 
@@ -41,7 +41,7 @@ Pushing to `main` triggers the GitHub Actions workflow (`.github/workflows/deplo
 2. Generates `llms-full.txt`
 3. Deploys to the `gh-pages` branch via `peaceiris/actions-gh-pages`
 
-The custom domain `docs.traderbro.com` is set via the `CNAME` field in the workflow.
+The custom domain `docs.traderbro.ai` is set via the `CNAME` field in the workflow.
 
 ---
 
