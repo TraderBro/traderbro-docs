@@ -25,7 +25,7 @@ traderbro analyst list [flags]
 |---|---|---|---|
 | `--sort` | string | `accuracy` | Sort by: `accuracy`, `return`, `predictions`, `name` |
 | `--period` | string | — | Return period for sort/display: `7d`, `1m`, `3m`, `6m`, `1y` |
-| `--country` | string | — | Filter by focus country (e.g. `US`, `BD`) |
+| `--exchange` | string | — | Filter by exchange analysts cover (e.g. `NASDAQ`, `NYSE`) |
 | `--asset-class` | string | — | Filter by asset class (e.g. `Equities`, `Crypto`) |
 | `--active` | bool | `true` | Only active analysts |
 | `--min-predictions` | int | `0` | Minimum prediction count |
@@ -40,8 +40,8 @@ traderbro analyst list [flags]
 # Top 10 analysts by accuracy
 traderbro analyst list --sort accuracy --limit 10
 
-# Best 3-month return, US analysts, minimum 15 predictions
-traderbro analyst list --period 3m --sort return --country US --min-predictions 15
+# Best 3-month return, NASDAQ analysts, minimum 15 predictions
+traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predictions 15
 
 # Analysts covering Technology sector with 5+ predictions, JSON output
 traderbro analyst list --sector Technology --min-predictions 5 --json
@@ -73,22 +73,17 @@ noLimitGains      No Limit Gains  12                 +22.1%
 {
   "count": 47,
   "next": null,
-  "results": [
-    {
-      "slug": "noLimitGains",
-      "name": "No Limit Gains",
-      "accuracy_rate": 71.2,
-      "predictions_count": 42,
-      "overall_return_pct": 18.4,
-      "avg_return_7d": null,
-      "avg_return_1m": 8.2,
-      "avg_return_3m": 12.1,
-      "avg_return_6m": 15.3,
-      "avg_return_1y": null,
-      "is_active": true
-    }
-  ]
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
 }
+```
+
+When `list_limit_reached` is `true`, the result set has been capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---
@@ -310,6 +305,79 @@ Financials      134     12         61.2%        +8.7%
 
 ---
 
+## traderbro analyst commentary
+
+List commentary, risk, and conditional mentions made by an analyst — the non-prediction content extracted by the CL2 pipeline. Useful for understanding which symbols an analyst tracks and what they've said about them without making a directional call.
+
+### Usage
+
+```bash
+traderbro analyst commentary <slug> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--symbol` | string | | Filter to a single ticker (e.g. `NVDA`) |
+| `--type` | string | | Filter by mention type: `commentary`, `risk_mention`, `conditional_prediction` |
+| `--limit` | int | `50` | Max rows to return (up to 200) |
+| `--json` | | | Output raw JSON |
+| `--plain` | | | Tab-delimited output for piping |
+| `--jq` | string | | JQ expression to filter JSON output |
+
+### Examples
+
+```bash
+# All commentary for an analyst
+traderbro analyst commentary stalkchain-stalkhq
+
+# Filter to a specific symbol
+traderbro analyst commentary aleabitoreddit --symbol NVDA --json
+
+# Only risk mentions
+traderbro analyst commentary noLimitGains --type risk_mention
+
+# Get all tickers this analyst has discussed
+traderbro analyst commentary crux_capital_ --json --jq '[.[].ticker] | unique'
+
+# Large fetch with limit
+traderbro analyst commentary aleabitoreddit --limit 200 --json
+```
+
+### Output (Table mode)
+
+```
+Ticker     Type          Quote                                              Published
+──────────────────────────────────────────────────────────────────────────────────────
+SOL-USD    commentary    When @pumpfun launched in 2024, they charged...    2026-03-21
+BTC        commentary    $BTC triggered a major liquidation event...        2026-03-18
+NVDA       risk_mention  NVDA supply constraints remain a risk into...      2026-03-15
+```
+
+### Output (JSON mode)
+
+```json
+[
+  {
+    "id": 2214,
+    "ticker": "SOL-USD",
+    "exchange": "CRYPTO",
+    "symbol_name": "Solana",
+    "mention_type": "commentary",
+    "direction": null,
+    "confidence_score": null,
+    "key_quote": "When @pumpfun launched in 2024, they charged 0.02 SOL to launch a token",
+    "timeframe": "",
+    "source_url": "https://x.com/stalkhq/status/2035271213355081827",
+    "published_at": "2026-03-21T08:24:05Z",
+    "created_at": "2026-03-22T11:24:25.430628Z"
+  }
+]
+```
+
+---
+
 ## Exit codes
 
 | Code | Meaning |
@@ -350,18 +418,22 @@ traderbro content list [flags]
 | `--relevant` | bool | false | Only content classified as market-relevant |
 | `--securities` | bool | false | Only content that mentions securities |
 | `--since` | string | — | Content published on or after (YYYY-MM-DD) |
+| `--symbol` | string | — | Filter to posts tagged with a ticker (e.g. `NVDA`, `BTC`) |
 
 ### Examples
 
 ```bash
+# All posts tagged with NVDA across all analysts
+traderbro content list --symbol NVDA --json
+
+# Posts about BTC from a specific analyst
+traderbro content list --symbol BTC --analyst stalkchain-stalkhq --json
+
 # Recent Twitter content from a specific analyst
 traderbro content list --analyst noLimitGains --source twitter --limit 10 --json
 
 # Market-relevant content mentioning securities since Jan 2025
 traderbro content list --relevant --securities --since 2025-01-01 --json
-
-# All YouTube videos
-traderbro content list --source youtube --type video --json
 ```
 
 ### Output (JSON mode)
@@ -583,20 +655,17 @@ ID    Analyst          Symbol   Direction   Return %   Correct   Published
 {
   "count": 234,
   "next": "https://traderbro.ai/...",
-  "results": [
-    {
-      "id": 101,
-      "analyst_name": "No Limit Gains",
-      "analyst_slug": "noLimitGains",
-      "symbol_ticker": "NVDA",
-      "direction": "bullish",
-      "confidence_score": 85,
-      "current_return_pct": 22.4,
-      "is_directionally_correct": true,
-      "published_at": "2025-03-15T10:00:00Z"
-    }
-  ]
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
 }
+```
+
+When `list_limit_reached` is `true`, results are capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---
@@ -795,63 +864,9 @@ Commands for searching and querying symbols tracked by TraderBro.
 
 ---
 
-## traderbro symbol list
-
-List tracked symbols with prediction and mention counts.
-
-### Usage
-
-```bash
-traderbro symbol list [flags]
-```
-
-### Flags
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--type` | string | — | Filter by type: `stock`, `etf`, `crypto` |
-| `--country` | string | — | Filter by country code (e.g. `US`, `BD`) |
-| `--sector` | string | — | Filter by sector |
-| `--search` | string | — | Search by name or ticker |
-| `--has-predictions` | bool | false | Only symbols with analyst predictions |
-
-### Examples
-
-```bash
-# All symbols with predictions
-traderbro symbol list --has-predictions --json
-
-# US stocks only
-traderbro symbol list --type stock --country US --json
-
-# Technology sector symbols
-traderbro symbol list --sector Technology --json
-```
-
-### Output (JSON mode)
-
-```json
-{
-  "count": 312,
-  "results": [
-    {
-      "id": 42,
-      "symbol": "NVDA",
-      "name": "NVIDIA Corporation",
-      "symbol_type": "stock",
-      "country": "US",
-      "predictions_count": 18,
-      "mentions_count": 47
-    }
-  ]
-}
-```
-
----
-
 ## traderbro symbol search
 
-Search symbols by name or ticker.
+Find the `EXCHANGE:SYMBOL` identifier for a company. Use the returned value with `symbol mentions` or `symbol predictions`.
 
 ### Usage
 
@@ -862,26 +877,31 @@ traderbro symbol search <query> [flags]
 ### Examples
 
 ```bash
+# Search by company name
 traderbro symbol search "Tesla" --json
-traderbro symbol search NVDA --json
+
+# Search by ticker
+traderbro symbol search AAPL --json
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
-  "count": 2,
+  "count": 1,
   "results": [
     {
-      "id": 7,
-      "symbol": "TSLA",
+      "symbol": "NASDAQ:TSLA",
       "name": "Tesla, Inc.",
-      "symbol_type": "stock",
+      "exchange": "NASDAQ",
+      "type": "stock",
       "country": "US"
     }
   ]
 }
 ```
+
+The `symbol` field is in `EXCHANGE:SYMBOL` format and is directly usable with `symbol mentions` and `symbol predictions`.
 
 ---
 
@@ -892,33 +912,45 @@ List content mentions for a symbol (from tweets, videos, articles).
 ### Usage
 
 ```bash
-traderbro symbol mentions <id> [flags]
+traderbro symbol mentions <EXCHANGE:SYMBOL> [flags]
 ```
 
 ### Flags
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--type` | string | — | Filter by mention type |
+| `--type` | string | — | Filter by mention type: `commentary`, `prediction`, `risk_mention`, `conditional_prediction` |
 
 ### Examples
 
 ```bash
-traderbro symbol mentions 42 --json
-traderbro symbol mentions 42 --type prediction --json
+traderbro symbol mentions NASDAQ:TSLA --json
+traderbro symbol mentions BINANCE:BTC --type commentary --json
+traderbro symbol mentions NASDAQ:TSLA --type prediction --json
+
+# Get all analysts who have commented on a symbol
+traderbro symbol mentions NASDAQ:NVDA --json --jq '[.results[].analyst_slug] | unique'
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
+  "count": 12,
+  "page": 1,
+  "page_size": 25,
+  "total_pages": 1,
   "results": [
     {
       "id": 201,
-      "mention_type": "prediction",
-      "direction": "bullish",
-      "confidence_score": 85,
-      "key_quote": "NVDA is a must-hold..."
+      "symbol_ticker": "BTC",
+      "analyst_slug": "apompliano",
+      "mention_type": "commentary",
+      "direction": null,
+      "confidence_score": null,
+      "key_quote": "bitcoin is hanging in there...",
+      "content_url": "https://x.com/APompliano/status/...",
+      "content_published": "2026-03-13T18:36:45Z"
     }
   ]
 }
@@ -933,30 +965,101 @@ List analyst predictions for a symbol.
 ### Usage
 
 ```bash
-traderbro symbol predictions <id> [flags]
+traderbro symbol predictions <EXCHANGE:SYMBOL> [flags]
 ```
 
 ### Examples
 
 ```bash
-traderbro symbol predictions 42 --json
+traderbro symbol predictions NASDAQ:TSLA --json
+traderbro symbol predictions NYSE:AAPL --json
+traderbro symbol predictions DSE:ABBANK --json
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
+  "count": 5,
+  "page": 1,
+  "page_size": 25,
+  "total_pages": 1,
   "results": [
     {
       "id": 101,
-      "analyst_name": "No Limit Gains",
+      "analyst_slug": "askedgar",
+      "analyst_name": "Ask Edgar",
       "direction": "bullish",
       "stated_price_target": "650",
       "confidence_score": 85,
-      "published_at": "2025-03-15T10:00:00Z"
+      "published_at": "2026-03-15T10:00:00Z"
     }
   ]
 }
+```
+
+---
+
+## traderbro symbol trending
+
+List symbols trending in analyst research coverage, ranked by analyst activity.
+
+### Usage
+
+```bash
+traderbro symbol trending [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--since` | string | `all` | Time window: `3d`, `7d`, `15d`, `1m`, `3m`, `1y`, `all` |
+| `--exchange` | string | — | Filter by exchange (e.g. `NASDAQ`, `NYSE`) |
+| `--sector` | string | — | Filter by sector (e.g. `Technology`, `Healthcare`) |
+| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `bullish`, `bearish` |
+
+### Examples
+
+```bash
+# Most-covered symbols in the last 7 days
+traderbro symbol trending --since 7d
+
+# Most bullish NASDAQ stocks this month
+traderbro symbol trending --since 1m --exchange NASDAQ --sort bullish
+
+# Technology sector, all time, JSON
+traderbro symbol trending --sector Technology --json
+
+# Pipe to jq
+traderbro symbol trending --since 7d --json | jq '.results[:5] | .[].ticker'
+```
+
+### Output (Table mode)
+
+```
+Ticker   Exchange   Analysts   Predictions   Bull   Bear   Latest
+──────────────────────────────────────────────────────────────────
+NVDA     NASDAQ     5          12            10     2      2026-04-20T10:00:00Z
+AAPL     NASDAQ     4          9             8      1      2026-04-19T14:30:00Z
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 48,
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
+}
+```
+
+When `list_limit_reached` is `true`, results are capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---
@@ -968,7 +1071,7 @@ traderbro symbol predictions 42 --json
 | `0` | Success |
 | `2` | Authentication failure |
 | `3` | Symbol not found |
-| `4` | Validation error |
+| `4` | Validation error (e.g. missing exchange prefix) |
 | `5` | Network error |
 ---
 sidebar_position: 2
@@ -1868,10 +1971,10 @@ traderbro analyst sector-edge <slug> --sector Technology --period 3m --json
 These prompts work with Claude, GPT-4, and similar AI assistants that have CLI access.
 
 **Find top analysts:**
-> "Run `traderbro analyst list --sort accuracy --min-predictions 20 --limit 10 --json` and tell me which analysts have the best combination of accuracy and return."
+> "Run `traderbro analyst list --sort return --min-predictions 20 --limit 10 --json` and tell me which analysts have the best overall return."
 
 **Sector-specific research:**
-> "Find analysts with strong Technology sector edge using `traderbro analyst sector-edge <slug> --period 3m --group-by industry --json`. Check the top 3 analysts by accuracy."
+> "Find analysts with strong Technology sector edge using `traderbro analyst sector-edge <slug> --period 3m --group-by industry --json`. Check the top 3 analysts by return."
 
 **Symbol sentiment check:**
 > "Get all NVDA predictions from the last 7 days using `traderbro prediction list --symbol NVDA --since <date> --json` and summarise the bull/bear sentiment."
@@ -1916,7 +2019,51 @@ To give an AI a complete map of all commands and flags without reading the docs:
 traderbro describe --json
 ```
 
-This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously.
+This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously. The schema also includes a `skills_discovery` section pointing to the skills commands.
+
+---
+
+## Workflow skills
+
+Skills are step-by-step workflows embedded in the binary that tell an AI agent how to chain CLI commands for common tasks. They are the right tool when a user asks an open-ended question like "what stocks should I buy?" rather than requesting a specific command.
+
+### List available skills
+
+```bash
+traderbro skills list --json
+```
+
+Returns a list of skills with `name`, `description`, `trigger_keywords`, and `required_tools`. The AI should check this whenever the user's request matches a common workflow.
+
+Example output:
+
+```json
+{
+  "count": 1,
+  "skills": [
+    {
+      "name": "analyst-top-picks",
+      "description": "Finds stocks to buy based on the latest recommendations from the best-performing analysts on TraderBro",
+      "trigger_keywords": ["what should i buy", "best analyst picks", "top analyst recommendations"],
+      "required_tools": ["analyst list", "analyst predictions <slug>"]
+    }
+  ]
+}
+```
+
+### Read a skill's full instructions
+
+```bash
+traderbro skills show analyst-top-picks
+```
+
+Prints the complete markdown workflow including step-by-step commands, scoring logic, and output format. The AI should read and follow the skill instructions exactly.
+
+### Available skills
+
+| Name | Description | Trigger keywords |
+|---|---|---|
+| `analyst-top-picks` | Finds stocks to buy from the best-performing analysts | "what should I buy", "best analyst picks", "top recommendations" |
 ---
 slug: /
 sidebar_position: 1
