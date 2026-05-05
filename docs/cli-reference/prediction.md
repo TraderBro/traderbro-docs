@@ -71,20 +71,17 @@ ID    Analyst          Symbol   Direction   Return %   Correct   Published
 {
   "count": 234,
   "next": "https://traderbro.ai/...",
-  "results": [
-    {
-      "id": 101,
-      "analyst_name": "No Limit Gains",
-      "analyst_slug": "noLimitGains",
-      "symbol_ticker": "NVDA",
-      "direction": "bullish",
-      "confidence_score": 85,
-      "current_return_pct": 22.4,
-      "is_directionally_correct": true,
-      "published_at": "2025-03-15T10:00:00Z"
-    }
-  ]
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
 }
+```
+
+When `list_limit_reached` is `true`, results are capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---

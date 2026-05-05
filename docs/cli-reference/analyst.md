@@ -25,7 +25,7 @@ traderbro analyst list [flags]
 |---|---|---|---|
 | `--sort` | string | `accuracy` | Sort by: `accuracy`, `return`, `predictions`, `name` |
 | `--period` | string | — | Return period for sort/display: `7d`, `1m`, `3m`, `6m`, `1y` |
-| `--country` | string | — | Filter by focus country (e.g. `US`, `BD`) |
+| `--exchange` | string | — | Filter by exchange analysts cover (e.g. `NASDAQ`, `NYSE`) |
 | `--asset-class` | string | — | Filter by asset class (e.g. `Equities`, `Crypto`) |
 | `--active` | bool | `true` | Only active analysts |
 | `--min-predictions` | int | `0` | Minimum prediction count |
@@ -40,8 +40,8 @@ traderbro analyst list [flags]
 # Top 10 analysts by accuracy
 traderbro analyst list --sort accuracy --limit 10
 
-# Best 3-month return, US analysts, minimum 15 predictions
-traderbro analyst list --period 3m --sort return --country US --min-predictions 15
+# Best 3-month return, NASDAQ analysts, minimum 15 predictions
+traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predictions 15
 
 # Analysts covering Technology sector with 5+ predictions, JSON output
 traderbro analyst list --sector Technology --min-predictions 5 --json
@@ -73,22 +73,17 @@ noLimitGains      No Limit Gains  12                 +22.1%
 {
   "count": 47,
   "next": null,
-  "results": [
-    {
-      "slug": "noLimitGains",
-      "name": "No Limit Gains",
-      "accuracy_rate": 71.2,
-      "predictions_count": 42,
-      "overall_return_pct": 18.4,
-      "avg_return_7d": null,
-      "avg_return_1m": 8.2,
-      "avg_return_3m": 12.1,
-      "avg_return_6m": 15.3,
-      "avg_return_1y": null,
-      "is_active": true
-    }
-  ]
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
 }
+```
+
+When `list_limit_reached` is `true`, the result set has been capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---
@@ -306,6 +301,79 @@ Financials      134     12         61.2%        +8.7%
     }
   ]
 }
+```
+
+---
+
+## traderbro analyst commentary
+
+List commentary, risk, and conditional mentions made by an analyst — the non-prediction content extracted by the CL2 pipeline. Useful for understanding which symbols an analyst tracks and what they've said about them without making a directional call.
+
+### Usage
+
+```bash
+traderbro analyst commentary <slug> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--symbol` | string | | Filter to a single ticker (e.g. `NVDA`) |
+| `--type` | string | | Filter by mention type: `commentary`, `risk_mention`, `conditional_prediction` |
+| `--limit` | int | `50` | Max rows to return (up to 200) |
+| `--json` | | | Output raw JSON |
+| `--plain` | | | Tab-delimited output for piping |
+| `--jq` | string | | JQ expression to filter JSON output |
+
+### Examples
+
+```bash
+# All commentary for an analyst
+traderbro analyst commentary stalkchain-stalkhq
+
+# Filter to a specific symbol
+traderbro analyst commentary aleabitoreddit --symbol NVDA --json
+
+# Only risk mentions
+traderbro analyst commentary noLimitGains --type risk_mention
+
+# Get all tickers this analyst has discussed
+traderbro analyst commentary crux_capital_ --json --jq '[.[].ticker] | unique'
+
+# Large fetch with limit
+traderbro analyst commentary aleabitoreddit --limit 200 --json
+```
+
+### Output (Table mode)
+
+```
+Ticker     Type          Quote                                              Published
+──────────────────────────────────────────────────────────────────────────────────────
+SOL-USD    commentary    When @pumpfun launched in 2024, they charged...    2026-03-21
+BTC        commentary    $BTC triggered a major liquidation event...        2026-03-18
+NVDA       risk_mention  NVDA supply constraints remain a risk into...      2026-03-15
+```
+
+### Output (JSON mode)
+
+```json
+[
+  {
+    "id": 2214,
+    "ticker": "SOL-USD",
+    "exchange": "CRYPTO",
+    "symbol_name": "Solana",
+    "mention_type": "commentary",
+    "direction": null,
+    "confidence_score": null,
+    "key_quote": "When @pumpfun launched in 2024, they charged 0.02 SOL to launch a token",
+    "timeframe": "",
+    "source_url": "https://x.com/stalkhq/status/2035271213355081827",
+    "published_at": "2026-03-21T08:24:05Z",
+    "created_at": "2026-03-22T11:24:25.430628Z"
+  }
+]
 ```
 
 ---

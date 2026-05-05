@@ -9,63 +9,9 @@ Commands for searching and querying symbols tracked by TraderBro.
 
 ---
 
-## traderbro symbol list
-
-List tracked symbols with prediction and mention counts.
-
-### Usage
-
-```bash
-traderbro symbol list [flags]
-```
-
-### Flags
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--type` | string | — | Filter by type: `stock`, `etf`, `crypto` |
-| `--country` | string | — | Filter by country code (e.g. `US`, `BD`) |
-| `--sector` | string | — | Filter by sector |
-| `--search` | string | — | Search by name or ticker |
-| `--has-predictions` | bool | false | Only symbols with analyst predictions |
-
-### Examples
-
-```bash
-# All symbols with predictions
-traderbro symbol list --has-predictions --json
-
-# US stocks only
-traderbro symbol list --type stock --country US --json
-
-# Technology sector symbols
-traderbro symbol list --sector Technology --json
-```
-
-### Output (JSON mode)
-
-```json
-{
-  "count": 312,
-  "results": [
-    {
-      "id": 42,
-      "symbol": "NVDA",
-      "name": "NVIDIA Corporation",
-      "symbol_type": "stock",
-      "country": "US",
-      "predictions_count": 18,
-      "mentions_count": 47
-    }
-  ]
-}
-```
-
----
-
 ## traderbro symbol search
 
-Search symbols by name or ticker.
+Find the `EXCHANGE:SYMBOL` identifier for a company. Use the returned value with `symbol mentions` or `symbol predictions`.
 
 ### Usage
 
@@ -76,26 +22,31 @@ traderbro symbol search <query> [flags]
 ### Examples
 
 ```bash
+# Search by company name
 traderbro symbol search "Tesla" --json
-traderbro symbol search NVDA --json
+
+# Search by ticker
+traderbro symbol search AAPL --json
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
-  "count": 2,
+  "count": 1,
   "results": [
     {
-      "id": 7,
-      "symbol": "TSLA",
+      "symbol": "NASDAQ:TSLA",
       "name": "Tesla, Inc.",
-      "symbol_type": "stock",
+      "exchange": "NASDAQ",
+      "type": "stock",
       "country": "US"
     }
   ]
 }
 ```
+
+The `symbol` field is in `EXCHANGE:SYMBOL` format and is directly usable with `symbol mentions` and `symbol predictions`.
 
 ---
 
@@ -106,33 +57,45 @@ List content mentions for a symbol (from tweets, videos, articles).
 ### Usage
 
 ```bash
-traderbro symbol mentions <id> [flags]
+traderbro symbol mentions <EXCHANGE:SYMBOL> [flags]
 ```
 
 ### Flags
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--type` | string | — | Filter by mention type |
+| `--type` | string | — | Filter by mention type: `commentary`, `prediction`, `risk_mention`, `conditional_prediction` |
 
 ### Examples
 
 ```bash
-traderbro symbol mentions 42 --json
-traderbro symbol mentions 42 --type prediction --json
+traderbro symbol mentions NASDAQ:TSLA --json
+traderbro symbol mentions BINANCE:BTC --type commentary --json
+traderbro symbol mentions NASDAQ:TSLA --type prediction --json
+
+# Get all analysts who have commented on a symbol
+traderbro symbol mentions NASDAQ:NVDA --json --jq '[.results[].analyst_slug] | unique'
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
+  "count": 12,
+  "page": 1,
+  "page_size": 25,
+  "total_pages": 1,
   "results": [
     {
       "id": 201,
-      "mention_type": "prediction",
-      "direction": "bullish",
-      "confidence_score": 85,
-      "key_quote": "NVDA is a must-hold..."
+      "symbol_ticker": "BTC",
+      "analyst_slug": "apompliano",
+      "mention_type": "commentary",
+      "direction": null,
+      "confidence_score": null,
+      "key_quote": "bitcoin is hanging in there...",
+      "content_url": "https://x.com/APompliano/status/...",
+      "content_published": "2026-03-13T18:36:45Z"
     }
   ]
 }
@@ -147,30 +110,101 @@ List analyst predictions for a symbol.
 ### Usage
 
 ```bash
-traderbro symbol predictions <id> [flags]
+traderbro symbol predictions <EXCHANGE:SYMBOL> [flags]
 ```
 
 ### Examples
 
 ```bash
-traderbro symbol predictions 42 --json
+traderbro symbol predictions NASDAQ:TSLA --json
+traderbro symbol predictions NYSE:AAPL --json
+traderbro symbol predictions DSE:ABBANK --json
 ```
 
 ### Output (JSON mode)
 
 ```json
 {
+  "count": 5,
+  "page": 1,
+  "page_size": 25,
+  "total_pages": 1,
   "results": [
     {
       "id": 101,
-      "analyst_name": "No Limit Gains",
+      "analyst_slug": "askedgar",
+      "analyst_name": "Ask Edgar",
       "direction": "bullish",
       "stated_price_target": "650",
       "confidence_score": 85,
-      "published_at": "2025-03-15T10:00:00Z"
+      "published_at": "2026-03-15T10:00:00Z"
     }
   ]
 }
+```
+
+---
+
+## traderbro symbol trending
+
+List symbols trending in analyst research coverage, ranked by analyst activity.
+
+### Usage
+
+```bash
+traderbro symbol trending [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--since` | string | `all` | Time window: `3d`, `7d`, `15d`, `1m`, `3m`, `1y`, `all` |
+| `--exchange` | string | — | Filter by exchange (e.g. `NASDAQ`, `NYSE`) |
+| `--sector` | string | — | Filter by sector (e.g. `Technology`, `Healthcare`) |
+| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `bullish`, `bearish` |
+
+### Examples
+
+```bash
+# Most-covered symbols in the last 7 days
+traderbro symbol trending --since 7d
+
+# Most bullish NASDAQ stocks this month
+traderbro symbol trending --since 1m --exchange NASDAQ --sort bullish
+
+# Technology sector, all time, JSON
+traderbro symbol trending --sector Technology --json
+
+# Pipe to jq
+traderbro symbol trending --since 7d --json | jq '.results[:5] | .[].ticker'
+```
+
+### Output (Table mode)
+
+```
+Ticker   Exchange   Analysts   Predictions   Bull   Bear   Latest
+──────────────────────────────────────────────────────────────────
+NVDA     NASDAQ     5          12            10     2      2026-04-20T10:00:00Z
+AAPL     NASDAQ     4          9             8      1      2026-04-19T14:30:00Z
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 48,
+  "results": [...],
+  "list_limit": 100,
+  "list_limit_tier": "anonymous",
+  "list_limit_reached": true
+}
+```
+
+When `list_limit_reached` is `true`, results are capped by your plan. The CLI prints a warning to stderr:
+
+```
+  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
 ```
 
 ---
@@ -182,5 +216,5 @@ traderbro symbol predictions 42 --json
 | `0` | Success |
 | `2` | Authentication failure |
 | `3` | Symbol not found |
-| `4` | Validation error |
+| `4` | Validation error (e.g. missing exchange prefix) |
 | `5` | Network error |

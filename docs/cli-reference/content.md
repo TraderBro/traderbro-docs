@@ -29,18 +29,22 @@ traderbro content list [flags]
 | `--relevant` | bool | false | Only content classified as market-relevant |
 | `--securities` | bool | false | Only content that mentions securities |
 | `--since` | string | — | Content published on or after (YYYY-MM-DD) |
+| `--symbol` | string | — | Filter to posts tagged with a ticker (e.g. `NVDA`, `BTC`) |
 
 ### Examples
 
 ```bash
+# All posts tagged with NVDA across all analysts
+traderbro content list --symbol NVDA --json
+
+# Posts about BTC from a specific analyst
+traderbro content list --symbol BTC --analyst stalkchain-stalkhq --json
+
 # Recent Twitter content from a specific analyst
 traderbro content list --analyst noLimitGains --source twitter --limit 10 --json
 
 # Market-relevant content mentioning securities since Jan 2025
 traderbro content list --relevant --securities --since 2025-01-01 --json
-
-# All YouTube videos
-traderbro content list --source youtube --type video --json
 ```
 
 ### Output (JSON mode)

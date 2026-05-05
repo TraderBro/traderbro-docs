@@ -19,7 +19,8 @@ Designed for humans and AI agents. Always use --json for machine-readable output
 - [Finding Top Analysts](/guides/finding-top-analysts): Filter by country, period, accuracy, and return
 - [Sector Edge Research](/guides/sector-edge-research): Use sector-edge and sector-map for stock selection
 - [Scripting and Automation](/guides/scripting-and-automation): Shell scripts, cron jobs, jq pipelines
-- [Using with AI Agents](/guides/using-with-ai-agents): Prompts and patterns for Claude, GPT, and other AI assistants
+- [Using with AI Agents](/guides/using-with-ai-agents): Prompts, patterns, and workflow skills for Claude, GPT, and other AI assistants
+- [Workflow Skills](/guides/using-with-ai-agents#workflow-skills): Step-by-step skill workflows embedded in the binary — run `traderbro skills list --json` to discover them
 
 ## Global flags (apply to all commands)
 

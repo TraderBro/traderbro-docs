@@ -37,10 +37,10 @@ traderbro analyst sector-edge <slug> --sector Technology --period 3m --json
 These prompts work with Claude, GPT-4, and similar AI assistants that have CLI access.
 
 **Find top analysts:**
-> "Run `traderbro analyst list --sort accuracy --min-predictions 20 --limit 10 --json` and tell me which analysts have the best combination of accuracy and return."
+> "Run `traderbro analyst list --sort return --min-predictions 20 --limit 10 --json` and tell me which analysts have the best overall return."
 
 **Sector-specific research:**
-> "Find analysts with strong Technology sector edge using `traderbro analyst sector-edge <slug> --period 3m --group-by industry --json`. Check the top 3 analysts by accuracy."
+> "Find analysts with strong Technology sector edge using `traderbro analyst sector-edge <slug> --period 3m --group-by industry --json`. Check the top 3 analysts by return."
 
 **Symbol sentiment check:**
 > "Get all NVDA predictions from the last 7 days using `traderbro prediction list --symbol NVDA --since <date> --json` and summarise the bull/bear sentiment."
@@ -85,4 +85,48 @@ To give an AI a complete map of all commands and flags without reading the docs:
 traderbro describe --json
 ```
 
-This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously.
+This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously. The schema also includes a `skills_discovery` section pointing to the skills commands.
+
+---
+
+## Workflow skills
+
+Skills are step-by-step workflows embedded in the binary that tell an AI agent how to chain CLI commands for common tasks. They are the right tool when a user asks an open-ended question like "what stocks should I buy?" rather than requesting a specific command.
+
+### List available skills
+
+```bash
+traderbro skills list --json
+```
+
+Returns a list of skills with `name`, `description`, `trigger_keywords`, and `required_tools`. The AI should check this whenever the user's request matches a common workflow.
+
+Example output:
+
+```json
+{
+  "count": 1,
+  "skills": [
+    {
+      "name": "analyst-top-picks",
+      "description": "Finds stocks to buy based on the latest recommendations from the best-performing analysts on TraderBro",
+      "trigger_keywords": ["what should i buy", "best analyst picks", "top analyst recommendations"],
+      "required_tools": ["analyst list", "analyst predictions <slug>"]
+    }
+  ]
+}
+```
+
+### Read a skill's full instructions
+
+```bash
+traderbro skills show analyst-top-picks
+```
+
+Prints the complete markdown workflow including step-by-step commands, scoring logic, and output format. The AI should read and follow the skill instructions exactly.
+
+### Available skills
+
+| Name | Description | Trigger keywords |
+|---|---|---|
+| `analyst-top-picks` | Finds stocks to buy from the best-performing analysts | "what should I buy", "best analyst picks", "top recommendations" |
