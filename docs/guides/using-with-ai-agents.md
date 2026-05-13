@@ -111,6 +111,40 @@ Calling `scan` without an upstream symbol filter scans the entire universe — p
 
 ---
 
+## Pattern effectiveness — "does this pattern work on this symbol?"
+
+`calculated-events scan` answers *"which symbols just fired pattern X?"* but says nothing about whether the pattern *works* on those symbols. For that:
+
+```bash
+traderbro calculated-events patterns EXCHANGE:SYMBOL [flags]
+```
+
+Returns one row per event type with: full-history count, last occurrence, direction, and the **average forward return at 7 horizons** (1D/3D/7D/1M/3M/6M/1Y) plus sample sizes. Bearish returns are sign-flipped server-side — for both directions, a higher positive number means "the pattern played out as expected."
+
+Common agent uses:
+
+```bash
+# Does Bull Flag work on TSLA?
+traderbro calculated-events patterns NASDAQ:TSLA --event-type bull_flag --json
+
+# Top 10 best-performing patterns on AAPL at 3M horizon
+traderbro calculated-events patterns NASDAQ:AAPL --top 10 --json
+
+# Currently-relevant high-accuracy setups (above-direction-avg + recent + n>=3)
+traderbro calculated-events patterns NASDAQ:NVDA --hot-only --horizon 1m --json
+
+# Bullish-tagged patterns that actually drop the stock (contrarian setups)
+traderbro calculated-events patterns NASDAQ:META --direction bullish --sort-by avg_return --asc --top 5
+```
+
+**Always quote `sample_size` when citing an average.** An `n=1` "+85% avg" is honest but not statistically meaningful. The `--hot-only` filter enforces `n ≥ 3` by definition; for other queries, surface `n` in your response.
+
+Neutral event types (`bb_squeeze`, `volume_spike`) return `returns: null` — no forward-return data by design. Don't quote returns for them.
+
+See the `pattern-effectiveness` skill (`traderbro skills show pattern-effectiveness`) for full workflow guidance, including the sign convention with a worked example.
+
+---
+
 ## Workflow skills
 
 Skills are step-by-step workflows embedded in the binary that tell an AI agent how to chain CLI commands for common tasks. They are the right tool when a user asks an open-ended question like "what stocks should I buy?" rather than requesting a specific command.

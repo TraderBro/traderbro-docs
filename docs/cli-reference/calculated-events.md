@@ -14,6 +14,7 @@ Events are computed from stored OHLCV data by a suite of detectors (45+ types) a
 | `calculated-events list` | List events for a single symbol |
 | `calculated-events scan` | Multi-symbol event search |
 | `calculated-events refresh` | Recompute events for a symbol on demand |
+| `calculated-events patterns` | Per-event-type historical forward returns for a symbol |
 
 ---
 
@@ -215,6 +216,97 @@ With `--json`:
   }
 }
 ```
+
+---
+
+## `calculated-events patterns`
+
+Show per-event-type historical forward-return effectiveness for a single symbol.
+
+For every event type that has fired on the symbol, returns the count, last occurrence, direction, and the average forward return at 7 horizons (1D/3D/7D/1M/3M/6M/1Y) plus sample sizes.
+
+**Bearish returns are sign-flipped server-side** — so for both directions, a higher positive number means "the pattern played out as expected." Neutral event types (`bb_squeeze`, `volume_spike`) return `returns: null` by design.
+
+Use this command (not `list` or `scan`) for questions like:
+- "Does pattern X actually work on this symbol?"
+- "Which patterns have the best historical track record on AAPL?"
+- "What high-accuracy setups just triggered on NVDA?"
+
+```bash
+traderbro calculated-events patterns NASDAQ:AAPL
+traderbro calculated-events patterns NASDAQ:NVDA --hot-only --horizon 1m
+traderbro calculated-events patterns NASDAQ:TSLA --event-type bull_flag --json
+traderbro calculated-events patterns NASDAQ:META --direction bullish --sort-by avg_return --asc
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--horizon` | Which `avg_return_<h>` to display + drive recency. One of `1d, 3d, 7d, 1m, 3m, 6m, 1y` | `3m` |
+| `--event-type` | Filter to one or more event types (comma-separated) | — |
+| `--direction` | `bullish` / `bearish` / `neutral` | — |
+| `--hot-only` | Only rows whose avg return beats their direction baseline AND occurred recently AND n ≥ 3 | off |
+| `--top` | Limit to top N rows after sorting (0 = no limit) | `0` |
+| `--sort-by` | Sort column: `avg_return`, `count`, `last_occurred_at`, `sample_size` | `avg_return` |
+| `--asc` | Ascending sort (default descending — most positive return first) | off |
+| `--min-samples` | Drop rows whose sample size at the selected horizon is below this | `1` |
+| `--within-days` | Override `--hot-only` recency window (default `max(horizon_days, 30)`) | — |
+| `--verbose` | Show per-direction baseline used by `--hot-only` | off |
+| `--resolution` | Price resolution: `daily` (only option today) | `daily` |
+
+**Output (table mode)**
+
+```
+EVENT TYPE              DIR  COUNT  LAST      AVG 3M   n    HOT
+─────────────────────────────────────────────────────────────────
+golden_cross            ↑     16   11mo ago  +9.1%   16
+bull_flag               ↑    206   23d ago   +7.9%  204    ★
+double_bottom           ↑     55   8mo ago   +6.2%   55
+head_and_shoulders      ↓     36   2mo ago  +10.5%   35    ★
+bear_flag               ↓    168   1mo ago   +5.9%  168    ★
+…
+```
+
+`★ HOT` = above-direction-average return at the selected horizon + occurred within `max(horizon_days, 30)` days + sample size ≥ 3.
+
+**Output (JSON mode)**
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "daily",
+  "selected_horizon": "3m",
+  "count": 47,
+  "hot_only": false,
+  "recency_days": 90,
+  "event_types": [
+    {
+      "event_type": "golden_cross",
+      "event_category": "trend_ma",
+      "direction": "bullish",
+      "count": 16,
+      "last_occurred_at": "2025-06-14",
+      "hot": false,
+      "returns": {
+        "avg_return_1d": -0.54, "sample_size_1d": 16,
+        "avg_return_3d":  0.31, "sample_size_3d": 16,
+        "avg_return_7d":  1.56, "sample_size_7d": 16,
+        "avg_return_1m":  2.38, "sample_size_1m": 16,
+        "avg_return_3m":  9.09, "sample_size_3m": 16,
+        "avg_return_6m": 26.67, "sample_size_6m": 16,
+        "avg_return_1y": 30.45, "sample_size_1y": 15
+      }
+    }
+  ]
+}
+```
+
+**Notes**
+
+- The full-history aggregate comes from a single `GROUP BY` over the `CalculatedEventReturn` table — sub-millisecond even for 30k+ events on a single symbol.
+- Always quote `sample_size` when citing an average. A `+85% avg_return_1y` on `n=1` is a single sample, not a track record. The `--hot-only` filter enforces `n ≥ 3` by definition.
+- The "hot" predicate is computed client-side from the response — agents can reproduce it from the JSON without recalling the rule.
 
 ---
 
