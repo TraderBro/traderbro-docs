@@ -387,6 +387,427 @@ NVDA       risk_mention  NVDA supply constraints remain a risk into...      2026
 | `3` | Analyst not found |
 | `4` | Validation error (invalid flag value) |
 | `5` | Network error |
+# traderbro analyze
+
+Generate a candlestick chart with indicator overlays, scan for candlestick patterns, detect structural chart patterns, and return a unified signals summary.
+
+## Usage
+
+```
+traderbro analyze EXCHANGE:SYMBOL [flags]
+```
+
+## Description
+
+`traderbro analyze` is the primary technical analysis command. It calls the TraderBro API to:
+
+1. Render a candlestick chart PNG with the requested indicators
+2. Scan the last N bars for TA-Lib candlestick patterns
+3. Detect structural chart patterns (bull flags, head & shoulders, etc.)
+4. Return a combined signals summary with a confluence score (0–10)
+
+The chart PNG is saved locally. **The absolute file path is printed to stdout** — an AI agent can read the image with its Read/image tool at that path.
+
+Human-readable summary (price, patterns, confluence) is printed to stderr.
+
+## Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--period` | `6mo` | Chart lookback: `1mo`, `3mo`, `6mo`, `1y`, `2y` |
+| `--interval` | `1d` | Bar interval: `1d`, `1wk` |
+| `--indicators` | `sma_50,sma_200,rsi` | Comma-separated indicator keys |
+| `--lookback` | `10` | Candle pattern scan window (bars) |
+| `--no-candle-patterns` | off | Skip TA-Lib candlestick scan |
+| `--no-chart-patterns` | off | Skip structural pattern detection (faster) |
+| `--output-dir` | `~/.traderbro/charts` | Directory to save the PNG |
+| `--json` | off | Print raw JSON to stdout (no PNG saved) |
+
+### Available indicators
+
+`sma_20`, `sma_50`, `sma_200`, `ema_20`, `ema_50`, `bbands`, `rsi`, `macd`
+
+## Examples
+
+```bash
+# Quick analysis — defaults (6mo daily, SMA 50/200 + RSI)
+traderbro analyze DSE:ACI
+
+# 1-year chart with MACD
+traderbro analyze NASDAQ:AAPL --period 1y --indicators sma_50,sma_200,rsi,macd
+
+# Bollinger Bands instead of moving averages
+traderbro analyze DSE:ACI --indicators bbands,rsi
+
+# Skip structural pattern scan (faster response)
+traderbro analyze DSE:ACI --no-chart-patterns
+
+# Raw JSON — for piping or agent parsing
+traderbro analyze DSE:ACI --json
+
+# Save PNG to a custom directory
+traderbro analyze DSE:ACI --output-dir /tmp/charts
+```
+
+## Output (default mode)
+
+**stdout** — absolute path to the saved PNG (one line, no trailing whitespace):
+```
+/home/user/.traderbro/charts/ACI_DSE_1d_6mo_analyze_20260508-120000.png
+```
+
+**stderr** — human-readable summary:
+```
+ACI (DSE)  1d  6mo  |  Last: 49.50  +2.70%  |  126 bars
+Candle patterns (last 10 bars): 2 total  2 bullish  (most recent: Engulfing Pattern, 1d ago)
+Confluence: 7/10 — bullish
+Chart saved: /home/user/.traderbro/charts/ACI_DSE_1d_6mo_analyze_20260508-120000.png
+```
+
+## Output (--json mode)
+
+```json
+{
+  "symbol": "ACI",
+  "exchange": "DSE",
+  "chart": {
+    "image_b64": "<base64-png>",
+    "format": "png",
+    "period": "6mo",
+    "interval": "1d",
+    "indicators": ["sma_50", "sma_200", "rsi"],
+    "data_points": 126,
+    "date_range": { "from": "2025-11-08", "to": "2026-05-08" }
+  },
+  "price_summary": {
+    "latest_close": 49.5,
+    "open": 48.2,
+    "high": 50.1,
+    "low": 47.8,
+    "change_pct": 2.7
+  },
+  "candle_patterns": {
+    "lookback": 10,
+    "patterns_found": 2,
+    "scan_range": { "from": "2026-04-28", "to": "2026-05-08" },
+    "patterns": [
+      {
+        "pattern_id": "CDLENGULFING",
+        "name": "Engulfing Pattern",
+        "direction": "bullish",
+        "signal": 100,
+        "candles_span": 2,
+        "date": "2026-05-07",
+        "bars_ago": 1
+      }
+    ]
+  },
+  "chart_patterns": {
+    "patterns_found": 0,
+    "patterns": []
+  },
+  "signals": {
+    "dominant_direction": "bullish",
+    "candle_bias": "bullish",
+    "structure_bias": "neutral",
+    "confluence_score": 7,
+    "summary": "2 bullish candle patterns in last 10 bars (Engulfing 1 bar ago, Hammer 3 bars ago)."
+  },
+  "generated_at": "2026-05-08T12:00:00Z"
+}
+```
+
+### Key JSON fields
+
+| Field | What it tells you |
+|---|---|
+| `candle_patterns[*].bars_ago` | 0 = today, 1 = yesterday. Patterns ≤ 2 bars ago are most actionable |
+| `chart_patterns[*].status` | `"active"` = still in play; `"historical"` = already resolved |
+| `chart_patterns[*].target_price` | Pattern's measured price target |
+| `chart_patterns[*].stop_price` | Suggested invalidation level |
+| `signals.confluence_score` | 0–10. ≥ 7 = high conviction. ≤ 3 = mixed or no signal |
+| `signals.dominant_direction` | Overall bias: `"bullish"`, `"bearish"`, or `"neutral"` |
+| `signals.summary` | Plain-English summary — read this first |
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| 1 | General error (invalid flags, etc.) |
+| 2 | Auth failure — check your API key |
+| 3 | Symbol not found or insufficient price history |
+| 6 | Quota exceeded |
+
+## See also
+
+- [`traderbro patterns candles`](patterns.md) — candlestick scan only, no chart
+- [`traderbro symbol search`](symbol.md) — find the right EXCHANGE:SYMBOL identifier
+# calculated-events
+
+Query the persisted history of technical events detected on a symbol's price history.
+
+Events are computed from stored OHLCV data by a suite of detectors (45+ types) and written to the database. They cover candlestick patterns, chart patterns, market structure, oscillators, volume anomalies, levels, and statistical extremes.
+
+---
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `calculated-events types` | List all available event types |
+| `calculated-events list` | List events for a single symbol |
+| `calculated-events scan` | Multi-symbol event search |
+| `calculated-events refresh` | Recompute events for a symbol on demand |
+
+---
+
+## `calculated-events types`
+
+List all registered event types grouped by category.
+
+```bash
+traderbro calculated-events types
+traderbro calculated-events types --category candlestick
+traderbro calculated-events types --json
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--category` | Filter by category name | all categories |
+| `--json` | Output as JSON | false |
+
+**Categories**
+
+| Category | Description |
+|---|---|
+| `candlestick` | 61 TA-Lib candlestick patterns (CDLHAMMER, CDLENGULFING, etc.) |
+| `chart_pattern` | Head & Shoulders, flags, pennants, double top/bottom |
+| `trend_ma` | MA crossovers, price-MA crossings, MA bounces |
+| `oscillator` | RSI, MACD, Stochastic threshold and crossover events |
+| `market_structure` | BOS (Break of Structure), CHoCH (Change of Character), DC zigzag |
+| `boundary` | Bollinger Bands, gaps, S/R level breaks |
+| `volume` | Volume spikes and buying/selling climax |
+| `levels` | Pivot points, periodic high/low breaks, Fibonacci retracements |
+| `statistical` | ATR extension, standard deviation breaches |
+
+**Example output**
+
+```json
+{
+  "types": [
+    { "event_type": "golden_cross",  "event_category": "trend_ma",    "default_params": {"fast": 50, "slow": 200} },
+    { "event_type": "rsi_oversold",  "event_category": "oscillator",  "default_params": {"period": 14, "level": 30} },
+    { "event_type": "BOS_Up",        "event_category": "market_structure", "default_params": {} }
+  ],
+  "count": 72
+}
+```
+
+---
+
+## `calculated-events list`
+
+List events for a single symbol, most recent first.
+
+```bash
+traderbro calculated-events list --symbol NASDAQ:AAPL
+traderbro calculated-events list --symbol NASDAQ:AAPL --type golden_cross
+traderbro calculated-events list --symbol NASDAQ:AAPL --category oscillator --direction bullish
+traderbro calculated-events list --symbol NASDAQ:AAPL --within-days 90 --limit 20
+traderbro calculated-events list --symbol NASDAQ:AAPL --from 2025-01-01 --to 2025-06-01
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--symbol` | Symbol in `EXCHANGE:TICKER` format (required) | — |
+| `--type` | Comma-separated event types to filter | all types |
+| `--category` | Filter by event category | all categories |
+| `--direction` | `bullish` or `bearish` | all |
+| `--within-days` | Only events in the last N days | — |
+| `--from` | Start date `YYYY-MM-DD` | — |
+| `--to` | End date `YYYY-MM-DD` | — |
+| `--resolution` | `daily` (weekly/intraday coming soon — see plan 128) | `daily` |
+| `--limit` | Max events returned (max 500) | 50 |
+| `--cluster-within-days` | Collapse consecutive same-type events within N days into a single cluster row (0 = off) | 0 |
+| `--json` | Output as JSON | false |
+
+**Example output (table)**
+
+```
+NASDAQ:AAPL  ·  Calculated Events  ·  daily
+──────────────────────────────────────────────────────────────────
+DATE         EVENT                   CATEGORY          DIR
+2026-05-08   CDLSHOOTINGSTAR         candlestick       ↓ bear
+2026-05-04   bull_flag               chart_pattern     ↑ bull
+2026-04-27   BOS_Up                  market_structure  ↑ bull
+2026-04-02   rsi_oversold            oscillator        ↑ bull
+2026-03-30   CDLMORNINGSTAR          candlestick       ↑ bull
+──────────────────────────────────────────────────────────────────
+5 events
+```
+
+---
+
+## `calculated-events scan`
+
+Search events across multiple symbols. Accepts symbol lists from screener output or an explicit list.
+
+```bash
+# Explicit symbol list
+traderbro calculated-events scan --symbols NASDAQ:AAPL,NASDAQ:NVDA --type golden_cross
+
+# Pipe from screener
+traderbro screener run --filter "sector:eq:Technology" --symbols-only \
+  | traderbro calculated-events scan --type BOS_Up --within-days 30
+
+# Group by symbol to find which symbols had events
+traderbro calculated-events scan --type rsi_oversold --within-days 7 --group-by symbol
+
+# Symbols-only output for further piping
+traderbro calculated-events scan --type golden_cross --within-days 30 --symbols-only
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--symbols` | Comma-separated `EXCHANGE:TICKER` list | all symbols |
+| `--symbols-file` | JSON file `{"symbols": [...]}` from `screener run --json` | — |
+| `--type` | Comma-separated event types | all types |
+| `--category` | Filter by category | all |
+| `--direction` | `bullish` or `bearish` | all |
+| `--within-days` | Events in last N days | — |
+| `--from` | Start date | — |
+| `--to` | End date | — |
+| `--market` | Filter by market/country (e.g. `US`, `BD`) | all |
+| `--group-by` | `symbol` — count events per symbol | none |
+| `--sort-by` | `occurred_at` or `symbol` | `occurred_at` |
+| `--sort-order` | `asc` or `desc` | `desc` |
+| `--symbols-only` | Output symbol list only (for piping) | false |
+| `--limit` | Max results (max 500) | 100 |
+| `--cluster-within-days` | Collapse consecutive same-type events within N days into a single cluster row (0 = off) | 0 |
+| `--json` | Output as JSON | false |
+
+**Pipeline pattern**
+
+```bash
+# Find tech stocks with recent golden cross, then check their calculated events
+traderbro screener run \
+  --filter "sector:eq:Technology" \
+  --filter "market_cap:gt:1000000000" \
+  --symbols-only \
+  | traderbro calculated-events scan \
+      --type golden_cross \
+      --within-days 30 \
+      --symbols-only \
+  | traderbro calculated-events scan \
+      --type rsi_oversold \
+      --within-days 90
+```
+
+**Example output (group-by symbol)**
+
+```json
+{
+  "count": 3,
+  "results": [
+    { "symbol": "NASDAQ:NVDA", "event_count": 12 },
+    { "symbol": "NASDAQ:AAPL", "event_count": 7 },
+    { "symbol": "NYSE:TSLA",   "event_count": 3 }
+  ]
+}
+```
+
+---
+
+## `calculated-events refresh`
+
+Recompute all events for a symbol synchronously using stored price data. Upserts results into the database. Use this to get fresh events for a symbol before running a query.
+
+```bash
+traderbro calculated-events refresh NASDAQ:NVDA
+traderbro calculated-events refresh NASDAQ:NVDA --detectors golden_cross,rsi_oversold
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--detectors` | Comma-separated detector keys to run | all detectors |
+
+**Example output**
+
+```
+NASDAQ:NVDA  →  1598 events upserted  (45 detectors)
+```
+
+With `--json`:
+
+```json
+{
+  "symbol": "NASDAQ:NVDA",
+  "total_events_upserted": 1598,
+  "detectors_run": 45,
+  "results": {
+    "golden_cross":      { "events_detected": 3 },
+    "rsi_oversold":      { "events_detected": 18 },
+    "candle_patterns":   { "events_detected": 477 }
+  }
+}
+```
+
+---
+
+## Event data fields
+
+Every event record contains:
+
+| Field | Type | Description |
+|---|---|---|
+| `event_type` | string | Specific event identifier (e.g. `golden_cross`, `BOS_Up`) |
+| `event_category` | string | Broad category (e.g. `trend_ma`, `market_structure`) |
+| `direction` | string\|null | `bullish`, `bearish`, or null |
+| `occurred_at` | date | Bar date when the event fired |
+| `data` | object | Signal-specific payload (varies by detector) |
+
+The `data` field contains detector-specific values:
+
+```json
+// golden_cross
+{ "fast": 50, "slow": 200, "fast_ma": 182.45, "slow_ma": 175.22 }
+
+// BOS_Up
+{ "close": 130.6, "level": 126.64, "atr": 4.07 }
+
+// bull_flag
+{
+  "pole_height": 36.98,
+  "target_price": 161.69,
+  "stop_price": 120.21,
+  "pattern_bars": 35,
+  "keypoints": {
+    "pole_base":     { "date": "2025-12-17", "price": 88.58 },
+    "pole_tip":      { "date": "2026-01-28", "price": 125.56 },
+    "flag_low":      { "date": "2026-02-05", "price": 120.21 },
+    "confirmation":  { "date": "2026-02-06", "price": 124.71 }
+  }
+}
+```
+
+---
+
+## Notes
+
+- Events are precomputed and stored — `list` and `scan` are instant queries against the database.
+- Run `refresh` before querying a symbol that was recently added or hasn't been processed yet.
+- The `backfill_calculated_events` Celery task processes all active symbols nightly.
+- Fib retracement and pivot point events fire frequently on daily data (rolling window recalculates each bar) — use `--within-days` to focus on recent signals.
+- Market structure events (`BOS_Up`, `CHoCH_Up`, etc.) and chart patterns (`bull_flag`, `head_and_shoulders`) are the highest-signal events — they fire infrequently and align with visually significant price structure.
 ---
 sidebar_position: 5
 title: content
@@ -529,6 +950,8 @@ traderbro <command-group> <subcommand> [arguments] [flags]
 | [`symbol`](/cli-reference/symbol) | Search symbols, list mentions and predictions per symbol |
 | [`content`](/cli-reference/content) | Query monitored tweets, videos, and articles |
 | [`research`](/cli-reference/research) | Published research articles |
+| [`screener`](/cli-reference/screener) | Screen stocks by fundamentals, valuation, price, and performance using the live DataMatrix |
+| [`calculated-events`](/cli-reference/calculated-events) | Query precomputed technical events (MA cross, BOS/CHoCH, candlestick patterns, etc.) per symbol |
 | `sectors` | List available sectors and industries |
 | `configure` | Save server URL and API key to config file |
 | `whoami` | Verify authentication and show account info |
@@ -545,6 +968,7 @@ These flags apply to every command.
 | `--json` | bool | false | Output as JSON |
 | `--plain` | bool | false | Tab-delimited output (no colors, no borders) |
 | `--jq <expr>` | string | — | Apply jq expression to JSON output (implies `--json`) |
+| `--jq-strict` | bool | false | Exit non-zero if `--jq` returns null / no results (catches typos) |
 | `--limit <n>` | int | 25 | Items per page (max 100) |
 | `--page <n>` | int | 1 | Page number |
 | `--no-color` | bool | false | Disable colored output |
@@ -582,6 +1006,118 @@ These flags apply to every command.
 # Get just the slugs of the top 10 analysts
 traderbro analyst list --limit 10 --jq '.results[].slug'
 ```
+# traderbro patterns
+
+Pattern detection sub-commands.
+
+## Sub-commands
+
+| Sub-command | Description |
+|---|---|
+| [`patterns candles`](#candles) | Scan for TA-Lib candlestick patterns in recent bars |
+
+---
+
+## patterns candles
+
+Scan the last N bars of a symbol's daily price history for candlestick patterns using TA-Lib.
+
+### Usage
+
+```
+traderbro patterns candles EXCHANGE:SYMBOL [flags]
+```
+
+### Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--lookback` | `10` | Number of recent bars to scan |
+| `--json` | off | Print raw JSON output |
+
+### Examples
+
+```bash
+# Last 10 bars (default)
+traderbro patterns candles DSE:ACI
+
+# Extend the scan window to 20 bars
+traderbro patterns candles NASDAQ:TSLA --lookback 20
+
+# JSON for parsing or piping
+traderbro patterns candles DSE:ACI --lookback 14 --json
+```
+
+### Output (default mode)
+
+```
+ACI (DSE) — Candlestick Patterns (last 10 bars)
+
+  Pattern                    Direction  Date          Bars Ago  Signal
+  ───────────────────────────────────────────────────────────────────
+  Engulfing Pattern          bullish    2026-05-07    1         100
+  Hammer                     bullish    2026-05-05    3         100
+
+2 pattern(s) found.
+```
+
+### Output (--json mode)
+
+```json
+{
+  "symbol": "ACI",
+  "exchange": "DSE",
+  "patterns_found": 2,
+  "lookback": 10,
+  "scan_range": { "from": "2026-04-28", "to": "2026-05-08" },
+  "patterns": [
+    {
+      "pattern_id": "CDLENGULFING",
+      "name": "Engulfing Pattern",
+      "direction": "bullish",
+      "signal": 100,
+      "candles_span": 2,
+      "date": "2026-05-07",
+      "bars_ago": 1
+    },
+    {
+      "pattern_id": "CDLHAMMER",
+      "name": "Hammer",
+      "direction": "bullish",
+      "signal": 100,
+      "candles_span": 1,
+      "date": "2026-05-05",
+      "bars_ago": 3
+    }
+  ]
+}
+```
+
+### Field reference
+
+| Field | Description |
+|---|---|
+| `pattern_id` | TA-Lib function name (e.g. `CDLENGULFING`) |
+| `name` | Human-readable pattern name |
+| `direction` | `"bullish"` or `"bearish"` |
+| `signal` | TA-Lib raw signal value: 100 (bullish), −100 (bearish), 200 (strong bullish), −200 (strong bearish) |
+| `candles_span` | How many bars the pattern spans (e.g. 2 for Engulfing) |
+| `date` | Date the pattern completed (YYYY-MM-DD) |
+| `bars_ago` | 0 = today, 1 = yesterday. Patterns ≤ 2 bars ago carry the most weight |
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| 2 | Auth failure |
+| 3 | Symbol not found or insufficient price history (< 30 bars) |
+| 6 | Quota exceeded |
+
+## See also
+
+- [`traderbro analyze`](analyze.md) — full analysis: chart + patterns + signals in one call
+- [`traderbro symbol search`](symbol.md) — find the right EXCHANGE:SYMBOL identifier
 ---
 sidebar_position: 3
 title: prediction
@@ -736,6 +1272,120 @@ Reasoning:     Strong AI demand, datacenter spending...
 | `3` | Prediction not found |
 | `4` | Validation error |
 | `5` | Network error |
+# prices
+
+Pull daily OHLCV bars from the price store for a single symbol over a date range. Replaces the `manage.py shell` bypass that forward-return / drawdown / base-rate analyses used to need.
+
+---
+
+## Usage
+
+```bash
+traderbro prices <EXCHANGE:SYMBOL> [date-range] [--json | --csv | --plain]
+```
+
+The date range is set one of three ways (mutually exclusive):
+
+- `--from YYYY-MM-DD [--to YYYY-MM-DD]` — explicit range (default `--to` is today)
+- `--within-days N` — last N calendar days
+- `--last N` — last N trading bars (server pulls a slightly wider range, CLI slices to N)
+
+Server cap: 5000 bars per request. When hit, the response includes `truncated: true` and `next_from: YYYY-MM-DD` so callers can paginate by re-calling with `--from <next_from>` until `truncated: false`.
+
+---
+
+## Flags
+
+| Flag | Description | Default |
+|---|---|---|
+| `--from` | Start date `YYYY-MM-DD` | 1y ago |
+| `--to` | End date `YYYY-MM-DD` | today |
+| `--within-days` | Last N calendar days (mutually exclusive with `--from/--to` and `--last`) | — |
+| `--last` | Last N trading bars (mutually exclusive with the above) | — |
+| `--resolution` | `daily` (weekly/intraday coming soon — see plan 128) | `daily` |
+| `--csv` | Emit CSV to stdout (header + rows) | false |
+| `--no-header` | CSV mode only — omit the header row (useful for chaining `>> all.csv`) | false |
+| `--json` | Output as JSON envelope `{symbol, resolution, count, truncated, [next_from], bars}` | false |
+
+---
+
+## Examples
+
+```bash
+# Last 30 trading days as JSON
+traderbro prices NASDAQ:AAPL --last 30 --json
+
+# Last quarter, table view
+traderbro prices NASDAQ:NVDA --within-days 90
+
+# 5-year CSV export for spreadsheet analysis
+traderbro prices NASDAQ:AAPL --from 2021-01-01 --csv > aapl_5y.csv
+
+# Chain multiple years into a single CSV (skip header on appends)
+for year in 2020 2021 2022 2023 2024 2025; do
+  traderbro prices NASDAQ:AAPL --from "${year}-01-01" --to "${year}-12-31" --csv --no-header
+done > aapl_all.csv
+
+# Self-describing pagination for ranges that exceed 5000 bars
+traderbro prices NASDAQ:AAPL --from 2005-01-01 --json
+# → truncated: true, next_from: "2024-11-13"
+traderbro prices NASDAQ:AAPL --from 2024-11-13 --json
+```
+
+---
+
+## Output (JSON mode)
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "daily",
+  "count": 250,
+  "truncated": false,
+  "bars": [
+    {
+      "date": "2025-05-13",
+      "open": 195.32,
+      "high": 196.10,
+      "low": 193.50,
+      "close": 195.85,
+      "adjusted_close": 193.45,
+      "volume": 45123000
+    }
+  ]
+}
+```
+
+When `truncated: true` is returned, `next_from` carries the date to resume with on the next call:
+
+```json
+{ "count": 5000, "truncated": true, "next_from": "2024-11-13", "bars": [...] }
+```
+
+The CLI also prints a stderr warning when truncation happens, so agents on `--json` mode aren't silently capped.
+
+---
+
+## Output (CSV mode)
+
+```
+date,open,high,low,close,adjusted_close,volume
+2025-05-13,195.32,196.10,193.50,195.85,193.45,45123000
+...
+```
+
+Volume is emitted as an integer (no scientific notation). Use `--no-header` when concatenating ranges into a single file.
+
+---
+
+## Exit codes
+
+| Code | Reason |
+|---|---|
+| 0 | Success |
+| 1 | Generic error (bad flags, mutually-exclusive range flags conflict) |
+| 3 | Symbol not found (response includes `did_you_mean`) |
+| 4 | Bad request (e.g. `--resolution weekly`, `--within-days 0`) |
 ---
 sidebar_position: 6
 title: research
@@ -852,6 +1502,361 @@ Excerpt:   Demand from hyperscalers continues to...
 | `2` | Authentication failure |
 | `3` | Article not found |
 | `4` | Validation error |
+| `5` | Network error |
+---
+sidebar_position: 7
+title: screener
+---
+
+# screener
+
+Commands for screening stocks using the live DataMatrix snapshot — a Redis-cached set of fundamentals, valuations, price levels, and performance metrics updated throughout the trading day.
+
+---
+
+## traderbro screener schema
+
+List all filterable fields with their types, categories, and descriptions.
+
+No authentication required — use this to discover available filter keys before running a screen.
+
+### Usage
+
+```bash
+traderbro screener schema [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--category` | string | — | Narrow to one category: `valuation`, `growth`, `performance`, `price`, `profitability`, `financials`, `balance_sheet`, `dividends`, `risk`, `price_levels`, `metadata` |
+| `--json` | bool | false | Output as JSON |
+| `--plain` | bool | false | Tab-delimited output |
+| `--jq` | string | — | Apply jq expression to JSON output |
+
+### Examples
+
+```bash
+# All fields (table)
+traderbro screener schema
+
+# Only valuation fields
+traderbro screener schema --category valuation
+
+# Growth fields as JSON — pipe to jq for just the keys
+traderbro screener schema --category growth --json | jq '[.fields[].key]'
+```
+
+### Output (Table mode)
+
+```
+Key                  Type         Category     Label
+────────────────────────────────────────────────────────────────
+market_cap           numeric      valuation    Market Cap
+pe_ratio             numeric      valuation    P/E Ratio
+revenue_growth       numeric      growth       Revenue Growth %
+ch1y                 numeric      performance  1-Year Change %
+sector               categorical  metadata     Sector
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "fields": [
+    {
+      "key": "market_cap",
+      "label": "Market Cap",
+      "description": "Total market capitalisation (USD)",
+      "type": "numeric",
+      "category": "valuation"
+    }
+  ]
+}
+```
+
+### Field types
+
+| Type | Operators available |
+|---|---|
+| `numeric` | `gt`, `lt`, `gte`, `lte`, `between` |
+| `categorical` | `eq`, `neq`, `in` |
+| `date` | `gt`, `lt`, `gte`, `lte` |
+
+---
+
+## traderbro screener values
+
+List every distinct non-null value present in the live DataMatrix for a given field. Use this before filtering on categorical fields so you know the exact strings the screener accepts.
+
+No authentication required.
+
+### Usage
+
+```bash
+traderbro screener values <field> [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--json` | bool | false | Output as JSON |
+| `--plain` | bool | false | One value per line — clean for piping or scripting |
+| `--jq` | string | — | Apply jq expression to JSON output |
+| `-q, --quiet` | bool | false | Suppress stderr hint line |
+
+### Examples
+
+```bash
+# What sectors exist in the matrix?
+traderbro screener values sector
+
+# All industries — pipe into grep
+traderbro screener values industry --plain | grep -i software
+
+# Valid exchange values as JSON
+traderbro screener values exchange --json
+
+# Countries, piped to count
+traderbro screener values country --plain | wc -l
+
+# Numeric field — returns min/max/avg instead
+traderbro screener values pe_ratio
+traderbro screener values ch1y
+```
+
+### Output (Table mode — categorical)
+
+```
+sector
+──────────────────────
+Communication Services
+Consumer Discretionary
+Consumer Staples
+Energy
+Financials
+Healthcare
+Industrials
+Materials
+Real Estate
+Technology
+Utilities
+
+  11 unique values  ·  cache: warm  ·  use these exact strings in --filter sector:eq:<value>
+```
+
+### Output (Table mode — numeric field)
+
+```
+Field      Type     Count   Min       Max          Avg
+──────────────────────────────────────────────────────
+pe_ratio   numeric   3510   0.02   106675.72     131.15
+```
+
+### Output (JSON mode — categorical)
+
+```json
+{
+  "field": "sector",
+  "type": "categorical",
+  "count": 11,
+  "values": [
+    "Communication Services",
+    "Consumer Discretionary",
+    ...
+    "Technology",
+    "Utilities"
+  ],
+  "cache_status": "warm"
+}
+```
+
+### Output (JSON mode — numeric)
+
+```json
+{
+  "field": "pe_ratio",
+  "type": "numeric",
+  "count": 3510,
+  "min": 0.02,
+  "max": 106675.72,
+  "avg": 131.15,
+  "cache_status": "warm"
+}
+```
+
+### Why this matters
+
+Categorical filter values must **exactly** match strings present in the DataMatrix. The screener does case-insensitive comparison, but the value must exist — `"tech"` and `"Information Technology"` return 0 results because the matrix uses `"Technology"`. Always call `screener values <field>` first when working with sector, industry, exchange, or country filters.
+
+---
+
+## traderbro screener run
+
+Run a screen against the current DataMatrix snapshot. Filters are ANDed together.
+
+Requires authentication.
+
+### Usage
+
+```bash
+traderbro screener run [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--filter` | string | — | Filter expression: `key:op:value`. Repeatable. |
+| `--sort` | string | `market_cap:desc` | Sort field and direction: `key:asc` or `key:desc` |
+| `--limit` | int | `50` | Max results (server cap: 500) |
+| `--symbols-only` | bool | false | Output symbol list only — clean for piping |
+| `--json` | bool | false | Output as JSON |
+| `--plain` | bool | false | Tab-delimited output |
+| `--jq` | string | — | Apply jq expression to JSON output |
+| `-q, --quiet` | bool | false | Suppress stderr stats line |
+
+### Filter operators
+
+| Operator | Meaning | Example |
+|---|---|---|
+| `gt` | greater than | `market_cap:gt:1B` |
+| `lt` | less than | `pe_ratio:lt:20` |
+| `gte` | greater than or equal | `pe_ratio:gte:15` |
+| `lte` | less than or equal | `revenue_growth:lte:5` |
+| `eq` | equals (case-insensitive) | `sector:eq:Technology` |
+| `neq` | not equal | `sector:neq:Energy` |
+| `between` | inclusive range | `pe_ratio:between:10,30` |
+| `in` | in list | `sector:in:Technology,Healthcare` |
+
+### Value suffixes
+
+Numeric values accept magnitude suffixes (case-insensitive):
+
+| Suffix | Multiplier | Example |
+|---|---|---|
+| `K` | ×1,000 | `volume:gt:500K` |
+| `M` | ×1,000,000 | `market_cap:gt:500M` |
+| `B` | ×1,000,000,000 | `market_cap:gt:1B` |
+| `T` | ×1,000,000,000,000 | `market_cap:lt:2T` |
+
+Null values are always excluded from numeric comparisons.
+
+### Examples
+
+```bash
+# Technology stocks with market cap > $1B
+traderbro screener run --filter "sector:eq:Technology" --filter "market_cap:gt:1B"
+
+# P/E between 10 and 30, sorted by market cap ascending
+traderbro screener run --filter "pe_ratio:between:10,30" --sort market_cap:asc --limit 20
+
+# Stocks down >20% over 1 year but up >10% over 6 months (recovery candidates)
+traderbro screener run \
+  --filter "ch1y:lt:-20" \
+  --filter "ch6m:gt:10" \
+  --sort ch6m:desc \
+  --limit 50
+
+# Energy or Utilities sector stocks, JSON output
+traderbro screener run --filter "sector:in:Energy,Utilities" --json
+
+# Symbol-only output for piping (one EXCHANGE:TICKER per line)
+traderbro screener run \
+  --filter "sector:eq:Technology" \
+  --filter "market_cap:gt:5B" \
+  --symbols-only
+
+# Discover the schema, then apply the right keys
+traderbro screener schema --category performance
+traderbro screener run --filter "ch1m:gt:20" --filter "ch3m:gt:0" --sort ch1m:desc
+```
+
+### Piping into calculated-events scan
+
+`--symbols-only` produces one `EXCHANGE:TICKER` per line on stdout, designed to be piped:
+
+```bash
+# Find Technology mega-caps, then scan for hammer candlestick pattern
+traderbro screener run \
+  --filter "sector:eq:Technology" \
+  --filter "market_cap:gt:10B" \
+  --symbols-only \
+  | traderbro calculated-events scan --type CDLHAMMER
+```
+
+### Output (Table mode)
+
+```
+Symbol        Name                       Mkt Cap    Close    Sector
+────────────────────────────────────────────────────────────────────
+NASDAQ:AAPL   Apple Inc                  3.00T      213.50   Technology
+NASDAQ:MSFT   Microsoft Corporation      2.80T      425.80   Technology
+NYSE:XOM      Exxon Mobil Corp           400.00B    118.20   Energy
+```
+
+Stderr (unless `--quiet`):
+
+```
+  3 results  ·  cache: warm  ·  use --symbols-only to pipe into calculated-events scan
+```
+
+### Output (JSON mode)
+
+```json
+{
+  "count": 3,
+  "cache_status": "warm",
+  "results": [
+    {
+      "symbol": "NASDAQ:AAPL",
+      "exchange": "NASDAQ",
+      "name": "Apple Inc",
+      "sector": "Technology",
+      "market_cap": 3000000000000,
+      "close_price": 213.50,
+      "pe_ratio": 28.5,
+      "ch1y": 12.3,
+      "ch6m": 8.1
+    }
+  ]
+}
+```
+
+### Output (symbols-only JSON mode)
+
+```json
+{
+  "count": 3,
+  "cache_status": "warm",
+  "symbols": [
+    "NASDAQ:AAPL",
+    "NASDAQ:MSFT",
+    "NYSE:XOM"
+  ]
+}
+```
+
+### Cache status
+
+| Value | Meaning |
+|---|---|
+| `warm` | DataMatrix is populated — results are live |
+| `cold` | Cache is empty (server just started or Redis flushed) — returns zero results |
+
+When the cache is cold, `count` will be `0` and `results` will be `[]`. Retry in a few minutes while the background job repopulates.
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Authentication failure (screener run only) |
+| `4` | Validation error (bad filter expression or unknown operator) |
 | `5` | Network error |
 ---
 sidebar_position: 4
@@ -1073,6 +2078,268 @@ When `list_limit_reached` is `true`, results are capped by your plan. The CLI pr
 | `3` | Symbol not found |
 | `4` | Validation error (e.g. missing exchange prefix) |
 | `5` | Network error |
+---
+title: tv
+sidebar_label: tv
+---
+
+# traderbro tv
+
+Control a TradingView chart from the CLI via a local WebSocket bridge.
+
+## Prerequisites
+
+1. Start the bridge server: `traderbro tv serve`
+2. Open your TraderBro chart page in a browser — the bridge connects automatically
+
+## Commands
+
+### serve
+
+Start the WebSocket bridge server.
+
+```bash
+traderbro tv serve
+traderbro tv serve --port 7892   # custom port (default 7891)
+```
+
+Keep this running in a dedicated terminal while using other `tv` commands.
+
+---
+
+### state
+
+Print the current chart state (symbol, resolution, studies, shapes).
+
+```bash
+traderbro tv state
+traderbro tv state --json
+traderbro tv state --full --json   # includes complete layout blob
+```
+
+---
+
+### symbol
+
+Switch the active chart to a different symbol.
+
+```bash
+traderbro tv symbol NASDAQ:AAPL
+traderbro tv symbol NASDAQ:NVDA 1D   # also set resolution
+traderbro tv symbol NASDAQ:MSFT 1W
+```
+
+---
+
+### screenshot
+
+Capture the active chart as a PNG.
+
+```bash
+traderbro tv close                              # dismiss panels first
+traderbro tv screenshot -o /tmp/chart.png
+traderbro tv screenshot                         # prints base64 to stdout
+```
+
+Always run `tv close` before `tv screenshot` to get a clean image.
+
+---
+
+### bars
+
+Fetch OHLCV bar data with authoritative UDF timestamps.
+
+```bash
+traderbro tv bars                    # last 90 bars (default)
+traderbro tv bars --last 300
+traderbro tv bars --last 90 --json
+```
+
+Use `tv bars` before any `tv draw` command to get exact timestamps. Computed timestamps
+(e.g. from `date`) can be off by one bar around weekends and DST transitions.
+
+---
+
+### draw
+
+Draw shapes and annotations on the chart.
+
+```bash
+# Horizontal level
+traderbro tv draw hline 150
+traderbro tv draw hline 150 --color '#ff9800' --style 1
+traderbro tv draw hline 200 --label "Key Support"
+
+# Trend line (get timestamps from tv bars first)
+traderbro tv draw line 2026-04-07 165 2026-05-09 212
+traderbro tv draw line 2026-04-07 165 2026-05-09 212 --color '#ef5350' --width 2
+traderbro tv draw line 2026-04-07 165 2026-05-09 212 --label "Uptrend"
+
+# Arrow marker
+traderbro tv draw arrow up 2026-04-07 160
+traderbro tv draw arrow down 2026-11-10 219
+
+# Text label
+traderbro tv draw text 2026-04-27 221 "Bull Flag"
+
+# Rectangle
+traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --color '#26a69a' --transparency 85
+traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --label "Bull Flag"
+
+# Position tools
+traderbro tv draw long 2026-05-01 198 2026-08-01 235 --stop 180
+traderbro tv draw short 2026-05-01 198 2026-08-01 165 --stop 215
+
+# Manage shapes
+traderbro tv draw list --json
+traderbro tv draw clear
+```
+
+**Colour convention:**
+
+| Role | Hex |
+|---|---|
+| Bullish (support, long) | `#26a69a` |
+| Bearish (resistance, short) | `#ef5350` |
+| Neutral (necklines, levels) | `#ff9800` |
+| Momentum / oscillator | `#9c27b0` |
+| Moving averages | `#2196f3` |
+
+---
+
+### study
+
+Manage indicators on the chart.
+
+```bash
+traderbro tv study list
+traderbro tv study list --json
+traderbro tv study add RSI
+traderbro tv study add IchimokuCloud
+traderbro tv study remove <id>
+traderbro tv study clear
+```
+
+---
+
+### save / saved
+
+Save the current chart layout and list saved layouts.
+
+```bash
+traderbro tv save
+traderbro tv save "NVDA Failed H&S — May 2026"
+traderbro tv saved
+traderbro tv saved --json
+```
+
+---
+
+### range / zoom / timeframe
+
+Control the visible date range and zoom level.
+
+```bash
+# Exact date range
+traderbro tv range 2024-01-01
+traderbro tv range 2024-01-01 2025-01-01
+
+# Zoom
+traderbro tv zoom in
+traderbro tv zoom out
+traderbro tv zoom reset
+traderbro tv zoom 12
+
+# Preset timeframes
+traderbro tv timeframe 6M
+traderbro tv timeframe 1Y 1D   # also set resolution
+```
+
+---
+
+### search
+
+Search for symbols via the UDF datafeed.
+
+```bash
+traderbro tv search TSLA
+traderbro tv search Apple
+traderbro tv search nvidia --exchange NASDAQ
+traderbro tv search oil --type etf --json
+```
+
+---
+
+### close
+
+Close open panels and popups before a screenshot.
+
+```bash
+traderbro tv close
+```
+
+---
+
+### charts / use
+
+List connected browser tabs and switch between them.
+
+```bash
+traderbro tv charts
+traderbro tv charts --json
+traderbro tv use <id-prefix>
+```
+
+---
+
+### eval
+
+Escape hatch for TradingView API calls not yet in a named command.
+
+```bash
+traderbro tv eval "tvWidget.activeChart().symbol()"
+```
+
+If you use `eval` for the same operation more than once, that pattern belongs in
+`chart-bridge.js` as a named case. Use `tradingview-cli` for API discovery.
+
+---
+
+## Standard Annotation Workflow
+
+```bash
+# 1. Set chart
+traderbro tv symbol NASDAQ:NVDA 1D
+
+# 2. Set visible range
+traderbro tv range 2025-01-01
+
+# 3. See what's on the chart
+traderbro tv close
+traderbro tv screenshot -o /tmp/before.png
+
+# 4. Get authoritative timestamps for drawing
+traderbro tv bars --last 90 --json
+
+# 5. Annotate
+traderbro tv draw hline 850
+traderbro tv draw arrow up 2025-03-15 780
+
+# 6. Verify
+traderbro tv close
+traderbro tv screenshot -o /tmp/annotated.png
+
+# 7. Save
+traderbro tv save "NVDA support levels"
+```
+
+## Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--port` | `7891` | Bridge server port |
+| `--json` | false | Output as JSON |
+| `--no-color` | false | Disable colored output |
 ---
 sidebar_position: 2
 title: Accuracy Rate
@@ -2020,6 +3287,28 @@ traderbro describe --json
 ```
 
 This outputs a JSON schema of every command, subcommand, flag, type, and default value. AI agents can fetch this once and use it to construct valid commands autonomously. The schema also includes a `skills_discovery` section pointing to the skills commands.
+
+---
+
+## Liquidity gate — always filter the universe before scanning
+
+The calculated-events store covers every active US symbol, including illiquid nano-caps and penny stocks. The same detectors that flag a `golden_cross` on Apple will also flag one on a $0.10 ticker that ran 20× on a single news event. Mathematically the cross is real; economically the signal is noise.
+
+**Always upstream-filter with the screener** before piping into `calculated-events scan`. The standard liquidity gate for tradeable mega-cap signals:
+
+```bash
+traderbro screener run \
+    --filter "exchange:eq:NASDAQ" \
+    --filter "market_cap:gt:5B" \
+    --filter "dollar_volume:gt:200M" \
+    --symbols-only \
+  | traderbro calculated-events scan --type bull_flag --within-days 7
+```
+
+Tighter gate (most liquid only): `market_cap:gt:50B` + `dollar_volume:gt:500M`.
+Looser gate (include mid-caps): `market_cap:gt:2B` + `dollar_volume:gt:50M`.
+
+Calling `scan` without an upstream symbol filter scans the entire universe — penny stocks included. This is rarely what an agent wants. If you genuinely want the full universe (e.g. computing aggregate counts for a market-internals dashboard), be explicit about it in your reasoning.
 
 ---
 
