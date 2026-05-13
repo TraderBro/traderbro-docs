@@ -89,6 +89,28 @@ This outputs a JSON schema of every command, subcommand, flag, type, and default
 
 ---
 
+## Liquidity gate — always filter the universe before scanning
+
+The calculated-events store covers every active US symbol, including illiquid nano-caps and penny stocks. The same detectors that flag a `golden_cross` on Apple will also flag one on a $0.10 ticker that ran 20× on a single news event. Mathematically the cross is real; economically the signal is noise.
+
+**Always upstream-filter with the screener** before piping into `calculated-events scan`. The standard liquidity gate for tradeable mega-cap signals:
+
+```bash
+traderbro screener run \
+    --filter "exchange:eq:NASDAQ" \
+    --filter "market_cap:gt:5B" \
+    --filter "dollar_volume:gt:200M" \
+    --symbols-only \
+  | traderbro calculated-events scan --type bull_flag --within-days 7
+```
+
+Tighter gate (most liquid only): `market_cap:gt:50B` + `dollar_volume:gt:500M`.
+Looser gate (include mid-caps): `market_cap:gt:2B` + `dollar_volume:gt:50M`.
+
+Calling `scan` without an upstream symbol filter scans the entire universe — penny stocks included. This is rarely what an agent wants. If you genuinely want the full universe (e.g. computing aggregate counts for a market-internals dashboard), be explicit about it in your reasoning.
+
+---
+
 ## Workflow skills
 
 Skills are step-by-step workflows embedded in the binary that tell an AI agent how to chain CLI commands for common tasks. They are the right tool when a user asks an open-ended question like "what stocks should I buy?" rather than requesting a specific command.

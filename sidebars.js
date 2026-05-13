@@ -23,6 +23,9 @@ const sidebars = {
         'cli-reference/symbol',
         'cli-reference/content',
         'cli-reference/research',
+        'cli-reference/screener',
+        'cli-reference/prices',
+        'cli-reference/tv',
       ],
     },
     {

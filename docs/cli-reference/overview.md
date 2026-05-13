@@ -20,6 +20,8 @@ traderbro <command-group> <subcommand> [arguments] [flags]
 | [`symbol`](/cli-reference/symbol) | Search symbols, list mentions and predictions per symbol |
 | [`content`](/cli-reference/content) | Query monitored tweets, videos, and articles |
 | [`research`](/cli-reference/research) | Published research articles |
+| [`screener`](/cli-reference/screener) | Screen stocks by fundamentals, valuation, price, and performance using the live DataMatrix |
+| [`calculated-events`](/cli-reference/calculated-events) | Query precomputed technical events (MA cross, BOS/CHoCH, candlestick patterns, etc.) per symbol |
 | `sectors` | List available sectors and industries |
 | `configure` | Save server URL and API key to config file |
 | `whoami` | Verify authentication and show account info |
@@ -36,6 +38,7 @@ These flags apply to every command.
 | `--json` | bool | false | Output as JSON |
 | `--plain` | bool | false | Tab-delimited output (no colors, no borders) |
 | `--jq <expr>` | string | — | Apply jq expression to JSON output (implies `--json`) |
+| `--jq-strict` | bool | false | Exit non-zero if `--jq` returns null / no results (catches typos) |
 | `--limit <n>` | int | 25 | Items per page (max 100) |
 | `--page <n>` | int | 1 | Page number |
 | `--no-color` | bool | false | Disable colored output |
