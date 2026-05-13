@@ -78,6 +78,19 @@ traderbro tv bars --last 90 --json
 Use `tv bars` before any `tv draw` command to get exact timestamps. Computed timestamps
 (e.g. from `date`) can be off by one bar around weekends and DST transitions.
 
+Returns OHLC + volume per bar. JSON shape:
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "D",
+  "count": 3,
+  "bars": [
+    { "date": "2026-05-12", "ts": 1778544000, "o": 291.98, "h": 294.9, "l": 290.23, "c": 294.27, "v": 56201555 }
+  ]
+}
+```
+
 ---
 
 ### draw
@@ -134,11 +147,79 @@ Manage indicators on the chart.
 ```bash
 traderbro tv study list
 traderbro tv study list --json
-traderbro tv study add RSI
-traderbro tv study add IchimokuCloud
+traderbro tv study add "Relative Strength Index"
+traderbro tv study add "Bollinger Bands"
+traderbro tv study add Volume --force        # add a duplicate explicitly
 traderbro tv study remove <id>
 traderbro tv study clear
 ```
+
+Use the **full display name** (e.g. `"Relative Strength Index"`, not `RSI`).
+By default `tv study add` short-circuits with a "study already on chart" note
+if a study with the same name is already present; pass `--force` to add a
+duplicate (e.g. two Moving Averages with different periods).
+
+#### study values
+
+Pull a time-aligned matrix of bars + every active study's computed output.
+This is the primary tool for numeric questions — "what's the current RSI?",
+"find the bar where MACD crossed signal", "is there an RSI divergence in
+the last 30 bars?" — anything that needs exact values rather than a visual.
+
+```bash
+traderbro tv study values                    # last 60 bars, all studies on chart
+traderbro tv study values --last 30 --json
+traderbro tv study values --ids wPbb6S,yteGJ4 --last 10
+traderbro tv study values --include-volume --last 60 --json
+traderbro tv study values --json --jq '.bars[-1].studies'
+```
+
+**Flags:**
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--last N` | `60` | Tail-slice to the most recent N bars. `0` returns all loaded bars. |
+| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `tv study list`. |
+| `--include-volume` | off | Add the Volume study just for this call, then remove it. Convenience for "I want volume aligned without setup boilerplate." |
+| `--json` | off | Machine-readable output. |
+
+**Output shape (JSON):**
+
+```json
+{
+  "count": 60,
+  "bars": [
+    {
+      "date": "2026-05-12",
+      "ts":   1778506200,
+      "open": 291.98, "high": 294.9, "low": 290.23, "close": 294.27,
+      "volume": 56201555,
+      "studies": {
+        "Bollinger Bands (20, 2, 0, SMA)": { "Median": 264.29, "Upper": 291.16, "Lower": 237.43 },
+        "Relative Strength Index (14)":    { "Plot":   67.58 }
+      }
+    }
+  ],
+  "schema": [ /* original exportData schema, kept for power users */ ]
+}
+```
+
+The `studies` map uses the **full configured name** (with parameters) as
+the key, so the JSON is self-describing. To extract values robustly in
+`jq`, use `startswith` or `test`:
+
+```bash
+traderbro tv study values --last 1 --json \
+  | jq '.bars[-1].studies | to_entries[] | select(.key|startswith("Bollinger")) | .value'
+```
+
+**Source:** values come from `widget.activeChart().exportData()` — the same
+series the chart itself paints, no second round-trip to the UDF API. The
+CLI waits for each study's `onDataLoaded` event before exporting, so a
+freshly-added study returns populated values on the first call.
+
+**Errors:** passing `--ids <unknown>` exits non-zero with
+`study ID(s) not on chart: …` rather than silently dropping the unknown ID.
 
 ---
 
@@ -252,6 +333,38 @@ traderbro tv screenshot -o /tmp/annotated.png
 # 7. Save
 traderbro tv save "NVDA support levels"
 ```
+
+## Numeric Pattern-Detection Workflow
+
+For questions that need **exact indicator values** (not visual reading):
+
+```bash
+# 1. Set chart and studies you want to measure
+traderbro tv symbol NASDAQ:AAPL
+traderbro tv study add "Relative Strength Index"
+traderbro tv study add "Bollinger Bands"
+
+# 2. Pull bars + study values time-aligned (one call)
+traderbro tv study values --last 30 --include-volume --json > /tmp/data.json
+
+# 3. Run your numeric query against the time series with jq
+jq '
+  .bars
+  | map({date, close, rsi: (.studies | to_entries[] | select(.key|startswith("Relative")) | .value.Plot)})
+  | (max_by(.close)) as $pHi
+  | (max_by(.rsi // -1)) as $rHi
+  | "price-peak: \($pHi.date) close=\($pHi.close) rsi=\($pHi.rsi)\nrsi-peak:   \($rHi.date) rsi=\($rHi.rsi)\nbearish-div: \($pHi.date > $rHi.date)"
+' /tmp/data.json
+
+# 4. Annotate the bars you found, then screenshot
+traderbro tv draw arrow down 2026-05-12 294.27
+traderbro tv screenshot -o /tmp/annotated.png
+```
+
+Use this workflow for RSI divergence, MACD crossover detection, Bollinger
+squeeze identification, volume confirmation, and multi-indicator
+confluence. See the `tv-quant` skill (`traderbro skills read tv-quant`)
+for five worked patterns with verified output.
 
 ## Flags
 
