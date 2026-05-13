@@ -15,6 +15,7 @@ Designed for humans and AI agents. Always use --json for machine-readable output
 - [Research Commands](/cli-reference/research): research list, get — published research articles
 - [Screener Commands](/cli-reference/screener): screener schema, values, run — filter stocks by fundamentals, valuation, price, and performance; use 'screener values <field>' to resolve exact categorical strings (sector, industry, exchange, country) before filtering; --symbols-only for piping into calculated-events scan
 - [Prices Commands](/cli-reference/prices): traderbro prices NASDAQ:AAPL — daily OHLCV bars; flags: --from, --to, --within-days, --last, --json, --csv, --no-header; server caps at 5000 bars per request with self-describing pagination via "truncated" + "next_from"
+- [Calculated Events Reference](/cli-reference/calculated-events): types, list, scan, refresh, patterns. The `patterns` subcommand returns per-event-type historical forward returns (1D/3D/7D/1M/3M/6M/1Y) for a single symbol — bearish returns are sign-flipped so higher always means "pattern played out." Use `--hot-only` for currently-relevant high-accuracy setups; see the `pattern-effectiveness` skill for workflow.
 - [Return Calculation](/concepts/return-calculation): How direction-adjusted returns and time windows work
 - [Accuracy Rate](/concepts/accuracy-rate): How directional accuracy is measured and when it appears
 - [Sector Edge](/concepts/sector-edge): Per-analyst sector and industry performance breakdown
@@ -28,9 +29,12 @@ Designed for humans and AI agents. Always use --json for machine-readable output
 
 Requires `traderbro tv serve` running and the TraderBro chart page open in browser.
 
-- [Chart Control Reference](/cli-reference/tv): serve, state, symbol, screenshot, bars, draw, study, save, zoom, range, timeframe, search, close, charts, use, eval
+- [Chart Control Reference](/cli-reference/tv): serve, state, symbol, screenshot, bars, draw, study (list/add/remove/clear/values), save, zoom, range, timeframe, search, close, charts, use, eval, health, refresh
 - Standard workflow: symbol → range → close+screenshot → bars → draw → close+screenshot → save
 - Always run `tv close` before `tv screenshot`; always run `tv bars` before `tv draw` to get authoritative timestamps
+- For numeric questions (RSI value, MACD cross detection, divergence patterns), use `tv study values` — returns bars + every active study's computed series time-aligned in one fetch
+- `tv bars` now returns volume in the `v` field; `tv study values --include-volume` hoists Volume to a top-level `volume` field
+- For long-running agents (>20 symbols), use `tv health` (read-only diagnostic) and `tv refresh` (reload tab to reclaim memory or recover from stuck state). See the `tv-long-running` skill for the composition pattern.
 - `tv eval` is an escape hatch only — use structured commands first
 
 ## Global flags (apply to all commands)

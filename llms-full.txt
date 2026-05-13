@@ -559,6 +559,7 @@ Events are computed from stored OHLCV data by a suite of detectors (45+ types) a
 | `calculated-events list` | List events for a single symbol |
 | `calculated-events scan` | Multi-symbol event search |
 | `calculated-events refresh` | Recompute events for a symbol on demand |
+| `calculated-events patterns` | Per-event-type historical forward returns for a symbol |
 
 ---
 
@@ -760,6 +761,97 @@ With `--json`:
   }
 }
 ```
+
+---
+
+## `calculated-events patterns`
+
+Show per-event-type historical forward-return effectiveness for a single symbol.
+
+For every event type that has fired on the symbol, returns the count, last occurrence, direction, and the average forward return at 7 horizons (1D/3D/7D/1M/3M/6M/1Y) plus sample sizes.
+
+**Bearish returns are sign-flipped server-side** — so for both directions, a higher positive number means "the pattern played out as expected." Neutral event types (`bb_squeeze`, `volume_spike`) return `returns: null` by design.
+
+Use this command (not `list` or `scan`) for questions like:
+- "Does pattern X actually work on this symbol?"
+- "Which patterns have the best historical track record on AAPL?"
+- "What high-accuracy setups just triggered on NVDA?"
+
+```bash
+traderbro calculated-events patterns NASDAQ:AAPL
+traderbro calculated-events patterns NASDAQ:NVDA --hot-only --horizon 1m
+traderbro calculated-events patterns NASDAQ:TSLA --event-type bull_flag --json
+traderbro calculated-events patterns NASDAQ:META --direction bullish --sort-by avg_return --asc
+```
+
+**Flags**
+
+| Flag | Description | Default |
+|---|---|---|
+| `--horizon` | Which `avg_return_<h>` to display + drive recency. One of `1d, 3d, 7d, 1m, 3m, 6m, 1y` | `3m` |
+| `--event-type` | Filter to one or more event types (comma-separated) | — |
+| `--direction` | `bullish` / `bearish` / `neutral` | — |
+| `--hot-only` | Only rows whose avg return beats their direction baseline AND occurred recently AND n ≥ 3 | off |
+| `--top` | Limit to top N rows after sorting (0 = no limit) | `0` |
+| `--sort-by` | Sort column: `avg_return`, `count`, `last_occurred_at`, `sample_size` | `avg_return` |
+| `--asc` | Ascending sort (default descending — most positive return first) | off |
+| `--min-samples` | Drop rows whose sample size at the selected horizon is below this | `1` |
+| `--within-days` | Override `--hot-only` recency window (default `max(horizon_days, 30)`) | — |
+| `--verbose` | Show per-direction baseline used by `--hot-only` | off |
+| `--resolution` | Price resolution: `daily` (only option today) | `daily` |
+
+**Output (table mode)**
+
+```
+EVENT TYPE              DIR  COUNT  LAST      AVG 3M   n    HOT
+─────────────────────────────────────────────────────────────────
+golden_cross            ↑     16   11mo ago  +9.1%   16
+bull_flag               ↑    206   23d ago   +7.9%  204    ★
+double_bottom           ↑     55   8mo ago   +6.2%   55
+head_and_shoulders      ↓     36   2mo ago  +10.5%   35    ★
+bear_flag               ↓    168   1mo ago   +5.9%  168    ★
+…
+```
+
+`★ HOT` = above-direction-average return at the selected horizon + occurred within `max(horizon_days, 30)` days + sample size ≥ 3.
+
+**Output (JSON mode)**
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "daily",
+  "selected_horizon": "3m",
+  "count": 47,
+  "hot_only": false,
+  "recency_days": 90,
+  "event_types": [
+    {
+      "event_type": "golden_cross",
+      "event_category": "trend_ma",
+      "direction": "bullish",
+      "count": 16,
+      "last_occurred_at": "2025-06-14",
+      "hot": false,
+      "returns": {
+        "avg_return_1d": -0.54, "sample_size_1d": 16,
+        "avg_return_3d":  0.31, "sample_size_3d": 16,
+        "avg_return_7d":  1.56, "sample_size_7d": 16,
+        "avg_return_1m":  2.38, "sample_size_1m": 16,
+        "avg_return_3m":  9.09, "sample_size_3m": 16,
+        "avg_return_6m": 26.67, "sample_size_6m": 16,
+        "avg_return_1y": 30.45, "sample_size_1y": 15
+      }
+    }
+  ]
+}
+```
+
+**Notes**
+
+- The full-history aggregate comes from a single `GROUP BY` over the `CalculatedEventReturn` table — sub-millisecond even for 30k+ events on a single symbol.
+- Always quote `sample_size` when citing an average. A `+85% avg_return_1y` on `n=1` is a single sample, not a track record. The `--hot-only` filter enforces `n ≥ 3` by definition.
+- The "hot" predicate is computed client-side from the response — agents can reproduce it from the JSON without recalling the rule.
 
 ---
 
@@ -2158,6 +2250,19 @@ traderbro tv bars --last 90 --json
 Use `tv bars` before any `tv draw` command to get exact timestamps. Computed timestamps
 (e.g. from `date`) can be off by one bar around weekends and DST transitions.
 
+Returns OHLC + volume per bar. JSON shape:
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "D",
+  "count": 3,
+  "bars": [
+    { "date": "2026-05-12", "ts": 1778544000, "o": 291.98, "h": 294.9, "l": 290.23, "c": 294.27, "v": 56201555 }
+  ]
+}
+```
+
 ---
 
 ### draw
@@ -2214,11 +2319,79 @@ Manage indicators on the chart.
 ```bash
 traderbro tv study list
 traderbro tv study list --json
-traderbro tv study add RSI
-traderbro tv study add IchimokuCloud
+traderbro tv study add "Relative Strength Index"
+traderbro tv study add "Bollinger Bands"
+traderbro tv study add Volume --force        # add a duplicate explicitly
 traderbro tv study remove <id>
 traderbro tv study clear
 ```
+
+Use the **full display name** (e.g. `"Relative Strength Index"`, not `RSI`).
+By default `tv study add` short-circuits with a "study already on chart" note
+if a study with the same name is already present; pass `--force` to add a
+duplicate (e.g. two Moving Averages with different periods).
+
+#### study values
+
+Pull a time-aligned matrix of bars + every active study's computed output.
+This is the primary tool for numeric questions — "what's the current RSI?",
+"find the bar where MACD crossed signal", "is there an RSI divergence in
+the last 30 bars?" — anything that needs exact values rather than a visual.
+
+```bash
+traderbro tv study values                    # last 60 bars, all studies on chart
+traderbro tv study values --last 30 --json
+traderbro tv study values --ids wPbb6S,yteGJ4 --last 10
+traderbro tv study values --include-volume --last 60 --json
+traderbro tv study values --json --jq '.bars[-1].studies'
+```
+
+**Flags:**
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--last N` | `60` | Tail-slice to the most recent N bars. `0` returns all loaded bars. |
+| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `tv study list`. |
+| `--include-volume` | off | Add the Volume study just for this call, then remove it. Convenience for "I want volume aligned without setup boilerplate." |
+| `--json` | off | Machine-readable output. |
+
+**Output shape (JSON):**
+
+```json
+{
+  "count": 60,
+  "bars": [
+    {
+      "date": "2026-05-12",
+      "ts":   1778506200,
+      "open": 291.98, "high": 294.9, "low": 290.23, "close": 294.27,
+      "volume": 56201555,
+      "studies": {
+        "Bollinger Bands (20, 2, 0, SMA)": { "Median": 264.29, "Upper": 291.16, "Lower": 237.43 },
+        "Relative Strength Index (14)":    { "Plot":   67.58 }
+      }
+    }
+  ],
+  "schema": [ /* original exportData schema, kept for power users */ ]
+}
+```
+
+The `studies` map uses the **full configured name** (with parameters) as
+the key, so the JSON is self-describing. To extract values robustly in
+`jq`, use `startswith` or `test`:
+
+```bash
+traderbro tv study values --last 1 --json \
+  | jq '.bars[-1].studies | to_entries[] | select(.key|startswith("Bollinger")) | .value'
+```
+
+**Source:** values come from `widget.activeChart().exportData()` — the same
+series the chart itself paints, no second round-trip to the UDF API. The
+CLI waits for each study's `onDataLoaded` event before exporting, so a
+freshly-added study returns populated values on the first call.
+
+**Errors:** passing `--ids <unknown>` exits non-zero with
+`study ID(s) not on chart: …` rather than silently dropping the unknown ID.
 
 ---
 
@@ -2292,6 +2465,74 @@ traderbro tv use <id-prefix>
 
 ---
 
+### health
+
+Read-only diagnostic of the chart pipeline. Use at run start, between every K
+symbols in long loops, and after any error.
+
+```bash
+traderbro tv health
+traderbro tv health --json
+traderbro tv health --quick                # skip slow udf_auth check
+traderbro tv health --mem-threshold 400    # fail if heap > 400 MB
+```
+
+Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
+`udf_auth`, `memory_ok`. Exits 0 if all pass, non-zero otherwise. Composes
+with shell `||`:
+
+```bash
+traderbro tv health || traderbro tv refresh
+```
+
+Output (JSON):
+
+```json
+{
+  "ok": true,
+  "checks": [
+    {"name": "bridge_reachable", "ok": true},
+    {"name": "chart_connected",  "ok": true, "tab_id": "35088f7f-...", "symbol": "NASDAQ:AAPL"},
+    {"name": "widget_ready",     "ok": true, "symbol": "NASDAQ:AAPL"},
+    {"name": "udf_auth",         "ok": true, "latency_ms": 27},
+    {"name": "memory_ok",        "ok": true, "heap_mb": 56, "threshold_mb": 1500}
+  ]
+}
+```
+
+The `udf_auth` check classifies HTTP 401 as auth failure; non-401 errors
+(like "no bar data for foreign symbol") pass auth but include a hint in the
+error field.
+
+---
+
+### refresh
+
+Reload the browser tab and wait for the chart to reconnect. Use to reclaim
+memory or recover from stuck TV state (e.g. studies wedged after a
+resolution change).
+
+```bash
+traderbro tv refresh
+traderbro tv refresh --json
+traderbro tv refresh --verify-with-bars    # also confirm UDF auth post-reload
+traderbro tv refresh --timeout 30s         # extend reconnect ceiling
+```
+
+Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
+- Same tab UUID back in connected charts (sessionStorage persists).
+- `tvWidget.activeChart()` non-null (widget fully bootstrapped).
+
+**Does NOT fix:** expired localStorage tokens (page reloads with same
+expired token), backend issues, permanently missing symbol data.
+
+**Important:** after refresh, the chart restores whatever layout was last
+saved via `tv save` — *not necessarily an empty chart, and not necessarily
+the symbol you were just analysing*. Always re-issue `tv symbol X` after
+a refresh.
+
+---
+
 ### eval
 
 Escape hatch for TradingView API calls not yet in a named command.
@@ -2332,6 +2573,77 @@ traderbro tv screenshot -o /tmp/annotated.png
 # 7. Save
 traderbro tv save "NVDA support levels"
 ```
+
+## Numeric Pattern-Detection Workflow
+
+For questions that need **exact indicator values** (not visual reading):
+
+```bash
+# 1. Set chart and studies you want to measure
+traderbro tv symbol NASDAQ:AAPL
+traderbro tv study add "Relative Strength Index"
+traderbro tv study add "Bollinger Bands"
+
+# 2. Pull bars + study values time-aligned (one call)
+traderbro tv study values --last 30 --include-volume --json > /tmp/data.json
+
+# 3. Run your numeric query against the time series with jq
+jq '
+  .bars
+  | map({date, close, rsi: (.studies | to_entries[] | select(.key|startswith("Relative")) | .value.Plot)})
+  | (max_by(.close)) as $pHi
+  | (max_by(.rsi // -1)) as $rHi
+  | "price-peak: \($pHi.date) close=\($pHi.close) rsi=\($pHi.rsi)\nrsi-peak:   \($rHi.date) rsi=\($rHi.rsi)\nbearish-div: \($pHi.date > $rHi.date)"
+' /tmp/data.json
+
+# 4. Annotate the bars you found, then screenshot
+traderbro tv draw arrow down 2026-05-12 294.27
+traderbro tv screenshot -o /tmp/annotated.png
+```
+
+Use this workflow for RSI divergence, MACD crossover detection, Bollinger
+squeeze identification, volume confirmation, and multi-indicator
+confluence. See the `tv-quant` skill (`traderbro skills read tv-quant`)
+for five worked patterns with verified output.
+
+## Long-Running Agent Loops
+
+For runs over many symbols (>20) or long unattended sessions, gate the loop
+with `tv health` and recover with `tv refresh`. The pattern:
+
+```bash
+# Pre-flight: health check, refresh if unhealthy, abort if still bad
+traderbro tv health || {
+  traderbro tv refresh
+  traderbro tv health || exit 1
+}
+
+# Set studies ONCE — they survive symbol switches and recompute automatically
+traderbro tv study add "Relative Strength Index"
+
+count=0
+for sym in $(cat symbols.txt); do
+  count=$((count + 1))
+
+  # Only if your loop draws shapes per symbol
+  # traderbro tv draw clear
+
+  traderbro tv symbol "$sym" || { echo "skip $sym"; continue; }
+  result=$(traderbro tv study values --last 60 --json --jq '.bars[-1]')
+  echo "$sym: $result"
+
+  # Defensive refresh every 50 symbols
+  if (( count % 50 == 0 )); then
+    traderbro tv refresh
+    traderbro tv symbol "$sym"               # re-set; refresh restores saved layout
+    traderbro tv study add "Relative Strength Index"   # re-add if not in saved layout
+  fi
+done
+```
+
+See the `tv-long-running` skill (`traderbro skills read tv-long-running`)
+for the full failure-mode → recovery decision table and memory budgeting
+guidance.
 
 ## Flags
 
@@ -3309,6 +3621,40 @@ Tighter gate (most liquid only): `market_cap:gt:50B` + `dollar_volume:gt:500M`.
 Looser gate (include mid-caps): `market_cap:gt:2B` + `dollar_volume:gt:50M`.
 
 Calling `scan` without an upstream symbol filter scans the entire universe — penny stocks included. This is rarely what an agent wants. If you genuinely want the full universe (e.g. computing aggregate counts for a market-internals dashboard), be explicit about it in your reasoning.
+
+---
+
+## Pattern effectiveness — "does this pattern work on this symbol?"
+
+`calculated-events scan` answers *"which symbols just fired pattern X?"* but says nothing about whether the pattern *works* on those symbols. For that:
+
+```bash
+traderbro calculated-events patterns EXCHANGE:SYMBOL [flags]
+```
+
+Returns one row per event type with: full-history count, last occurrence, direction, and the **average forward return at 7 horizons** (1D/3D/7D/1M/3M/6M/1Y) plus sample sizes. Bearish returns are sign-flipped server-side — for both directions, a higher positive number means "the pattern played out as expected."
+
+Common agent uses:
+
+```bash
+# Does Bull Flag work on TSLA?
+traderbro calculated-events patterns NASDAQ:TSLA --event-type bull_flag --json
+
+# Top 10 best-performing patterns on AAPL at 3M horizon
+traderbro calculated-events patterns NASDAQ:AAPL --top 10 --json
+
+# Currently-relevant high-accuracy setups (above-direction-avg + recent + n>=3)
+traderbro calculated-events patterns NASDAQ:NVDA --hot-only --horizon 1m --json
+
+# Bullish-tagged patterns that actually drop the stock (contrarian setups)
+traderbro calculated-events patterns NASDAQ:META --direction bullish --sort-by avg_return --asc --top 5
+```
+
+**Always quote `sample_size` when citing an average.** An `n=1` "+85% avg" is honest but not statistically meaningful. The `--hot-only` filter enforces `n ≥ 3` by definition; for other queries, surface `n` in your response.
+
+Neutral event types (`bb_squeeze`, `volume_spike`) return `returns: null` — no forward-return data by design. Don't quote returns for them.
+
+See the `pattern-effectiveness` skill (`traderbro skills show pattern-effectiveness`) for full workflow guidance, including the sign convention with a worked example.
 
 ---
 
