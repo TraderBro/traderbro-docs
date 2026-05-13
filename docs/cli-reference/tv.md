@@ -293,6 +293,74 @@ traderbro tv use <id-prefix>
 
 ---
 
+### health
+
+Read-only diagnostic of the chart pipeline. Use at run start, between every K
+symbols in long loops, and after any error.
+
+```bash
+traderbro tv health
+traderbro tv health --json
+traderbro tv health --quick                # skip slow udf_auth check
+traderbro tv health --mem-threshold 400    # fail if heap > 400 MB
+```
+
+Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
+`udf_auth`, `memory_ok`. Exits 0 if all pass, non-zero otherwise. Composes
+with shell `||`:
+
+```bash
+traderbro tv health || traderbro tv refresh
+```
+
+Output (JSON):
+
+```json
+{
+  "ok": true,
+  "checks": [
+    {"name": "bridge_reachable", "ok": true},
+    {"name": "chart_connected",  "ok": true, "tab_id": "35088f7f-...", "symbol": "NASDAQ:AAPL"},
+    {"name": "widget_ready",     "ok": true, "symbol": "NASDAQ:AAPL"},
+    {"name": "udf_auth",         "ok": true, "latency_ms": 27},
+    {"name": "memory_ok",        "ok": true, "heap_mb": 56, "threshold_mb": 1500}
+  ]
+}
+```
+
+The `udf_auth` check classifies HTTP 401 as auth failure; non-401 errors
+(like "no bar data for foreign symbol") pass auth but include a hint in the
+error field.
+
+---
+
+### refresh
+
+Reload the browser tab and wait for the chart to reconnect. Use to reclaim
+memory or recover from stuck TV state (e.g. studies wedged after a
+resolution change).
+
+```bash
+traderbro tv refresh
+traderbro tv refresh --json
+traderbro tv refresh --verify-with-bars    # also confirm UDF auth post-reload
+traderbro tv refresh --timeout 30s         # extend reconnect ceiling
+```
+
+Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
+- Same tab UUID back in connected charts (sessionStorage persists).
+- `tvWidget.activeChart()` non-null (widget fully bootstrapped).
+
+**Does NOT fix:** expired localStorage tokens (page reloads with same
+expired token), backend issues, permanently missing symbol data.
+
+**Important:** after refresh, the chart restores whatever layout was last
+saved via `tv save` — *not necessarily an empty chart, and not necessarily
+the symbol you were just analysing*. Always re-issue `tv symbol X` after
+a refresh.
+
+---
+
 ### eval
 
 Escape hatch for TradingView API calls not yet in a named command.
@@ -365,6 +433,45 @@ Use this workflow for RSI divergence, MACD crossover detection, Bollinger
 squeeze identification, volume confirmation, and multi-indicator
 confluence. See the `tv-quant` skill (`traderbro skills read tv-quant`)
 for five worked patterns with verified output.
+
+## Long-Running Agent Loops
+
+For runs over many symbols (>20) or long unattended sessions, gate the loop
+with `tv health` and recover with `tv refresh`. The pattern:
+
+```bash
+# Pre-flight: health check, refresh if unhealthy, abort if still bad
+traderbro tv health || {
+  traderbro tv refresh
+  traderbro tv health || exit 1
+}
+
+# Set studies ONCE — they survive symbol switches and recompute automatically
+traderbro tv study add "Relative Strength Index"
+
+count=0
+for sym in $(cat symbols.txt); do
+  count=$((count + 1))
+
+  # Only if your loop draws shapes per symbol
+  # traderbro tv draw clear
+
+  traderbro tv symbol "$sym" || { echo "skip $sym"; continue; }
+  result=$(traderbro tv study values --last 60 --json --jq '.bars[-1]')
+  echo "$sym: $result"
+
+  # Defensive refresh every 50 symbols
+  if (( count % 50 == 0 )); then
+    traderbro tv refresh
+    traderbro tv symbol "$sym"               # re-set; refresh restores saved layout
+    traderbro tv study add "Relative Strength Index"   # re-add if not in saved layout
+  fi
+done
+```
+
+See the `tv-long-running` skill (`traderbro skills read tv-long-running`)
+for the full failure-mode → recovery decision table and memory budgeting
+guidance.
 
 ## Flags
 
