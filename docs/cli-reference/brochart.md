@@ -1,15 +1,23 @@
 ---
-title: tv
-sidebar_label: tv
+title: brochart
+sidebar_label: brochart
 ---
 
-# traderbro tv
+# traderbro brochart
 
-Control a TradingView chart from the CLI via a local WebSocket bridge.
+Control the **traderbro.ai-hosted** TradingView charting library from the CLI via a local
+WebSocket bridge. This is the proprietary-data chart — it carries TraderBro's custom overlays
+(analyst marks, calculated events, predictions) that cannot be loaded into tradingview.com.
+
+:::tip Which chart command?
+Use **`brochart`** for proprietary overlays on the traderbro.ai chart. For high-fidelity
+price/volume from the official tradingview.com chart — deeper intraday, extended hours, long
+history, and bulk pattern scanning — use [`tvsandbox`](./tvsandbox.md).
+:::
 
 ## Prerequisites
 
-1. Start the bridge server: `traderbro tv serve`
+1. Start the bridge server: `traderbro brochart serve`
 2. Open your TraderBro chart page in a browser — the bridge connects automatically
 
 ## Commands
@@ -19,8 +27,8 @@ Control a TradingView chart from the CLI via a local WebSocket bridge.
 Start the WebSocket bridge server.
 
 ```bash
-traderbro tv serve
-traderbro tv serve --port 7892   # custom port (default 7891)
+traderbro brochart serve
+traderbro brochart serve --port 7892   # custom port (default 7891)
 ```
 
 Keep this running in a dedicated terminal while using other `tv` commands.
@@ -32,9 +40,9 @@ Keep this running in a dedicated terminal while using other `tv` commands.
 Print the current chart state (symbol, resolution, studies, shapes).
 
 ```bash
-traderbro tv state
-traderbro tv state --json
-traderbro tv state --full --json   # includes complete layout blob
+traderbro brochart state
+traderbro brochart state --json
+traderbro brochart state --full --json   # includes complete layout blob
 ```
 
 ---
@@ -44,9 +52,9 @@ traderbro tv state --full --json   # includes complete layout blob
 Switch the active chart to a different symbol.
 
 ```bash
-traderbro tv symbol NASDAQ:AAPL
-traderbro tv symbol NASDAQ:NVDA 1D   # also set resolution
-traderbro tv symbol NASDAQ:MSFT 1W
+traderbro brochart symbol NASDAQ:AAPL
+traderbro brochart symbol NASDAQ:NVDA 1D   # also set resolution
+traderbro brochart symbol NASDAQ:MSFT 1W
 ```
 
 ---
@@ -56,12 +64,12 @@ traderbro tv symbol NASDAQ:MSFT 1W
 Capture the active chart as a PNG.
 
 ```bash
-traderbro tv close                              # dismiss panels first
-traderbro tv screenshot -o /tmp/chart.png
-traderbro tv screenshot                         # prints base64 to stdout
+traderbro brochart close                              # dismiss panels first
+traderbro brochart screenshot -o /tmp/chart.png
+traderbro brochart screenshot                         # prints base64 to stdout
 ```
 
-Always run `tv close` before `tv screenshot` to get a clean image.
+Always run `brochart close` before `brochart screenshot` to get a clean image.
 
 ---
 
@@ -70,12 +78,12 @@ Always run `tv close` before `tv screenshot` to get a clean image.
 Fetch OHLCV bar data with authoritative UDF timestamps.
 
 ```bash
-traderbro tv bars                    # last 90 bars (default)
-traderbro tv bars --last 300
-traderbro tv bars --last 90 --json
+traderbro brochart bars                    # last 90 bars (default)
+traderbro brochart bars --last 300
+traderbro brochart bars --last 90 --json
 ```
 
-Use `tv bars` before any `tv draw` command to get exact timestamps. Computed timestamps
+Use `brochart bars` before any `brochart draw` command to get exact timestamps. Computed timestamps
 (e.g. from `date`) can be off by one bar around weekends and DST transitions.
 
 Returns OHLC + volume per bar. JSON shape:
@@ -99,33 +107,33 @@ Draw shapes and annotations on the chart.
 
 ```bash
 # Horizontal level
-traderbro tv draw hline 150
-traderbro tv draw hline 150 --color '#ff9800' --style 1
-traderbro tv draw hline 200 --label "Key Support"
+traderbro brochart draw hline 150
+traderbro brochart draw hline 150 --color '#ff9800' --style 1
+traderbro brochart draw hline 200 --label "Key Support"
 
-# Trend line (get timestamps from tv bars first)
-traderbro tv draw line 2026-04-07 165 2026-05-09 212
-traderbro tv draw line 2026-04-07 165 2026-05-09 212 --color '#ef5350' --width 2
-traderbro tv draw line 2026-04-07 165 2026-05-09 212 --label "Uptrend"
+# Trend line (get timestamps from brochart bars first)
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212 --color '#ef5350' --width 2
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212 --label "Uptrend"
 
 # Arrow marker
-traderbro tv draw arrow up 2026-04-07 160
-traderbro tv draw arrow down 2026-11-10 219
+traderbro brochart draw arrow up 2026-04-07 160
+traderbro brochart draw arrow down 2026-11-10 219
 
 # Text label
-traderbro tv draw text 2026-04-27 221 "Bull Flag"
+traderbro brochart draw text 2026-04-27 221 "Bull Flag"
 
 # Rectangle
-traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --color '#26a69a' --transparency 85
-traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --label "Bull Flag"
+traderbro brochart draw rect 2026-04-24 218 2026-05-09 197 --color '#26a69a' --transparency 85
+traderbro brochart draw rect 2026-04-24 218 2026-05-09 197 --label "Bull Flag"
 
 # Position tools
-traderbro tv draw long 2026-05-01 198 2026-08-01 235 --stop 180
-traderbro tv draw short 2026-05-01 198 2026-08-01 165 --stop 215
+traderbro brochart draw long 2026-05-01 198 2026-08-01 235 --stop 180
+traderbro brochart draw short 2026-05-01 198 2026-08-01 165 --stop 215
 
 # Manage shapes
-traderbro tv draw list --json
-traderbro tv draw clear
+traderbro brochart draw list --json
+traderbro brochart draw clear
 ```
 
 **Colour convention:**
@@ -145,17 +153,17 @@ traderbro tv draw clear
 Manage indicators on the chart.
 
 ```bash
-traderbro tv study list
-traderbro tv study list --json
-traderbro tv study add "Relative Strength Index"
-traderbro tv study add "Bollinger Bands"
-traderbro tv study add Volume --force        # add a duplicate explicitly
-traderbro tv study remove <id>
-traderbro tv study clear
+traderbro brochart study list
+traderbro brochart study list --json
+traderbro brochart study add "Relative Strength Index"
+traderbro brochart study add "Bollinger Bands"
+traderbro brochart study add Volume --force        # add a duplicate explicitly
+traderbro brochart study remove <id>
+traderbro brochart study clear
 ```
 
 Use the **full display name** (e.g. `"Relative Strength Index"`, not `RSI`).
-By default `tv study add` short-circuits with a "study already on chart" note
+By default `brochart study add` short-circuits with a "study already on chart" note
 if a study with the same name is already present; pass `--force` to add a
 duplicate (e.g. two Moving Averages with different periods).
 
@@ -167,11 +175,11 @@ This is the primary tool for numeric questions — "what's the current RSI?",
 the last 30 bars?" — anything that needs exact values rather than a visual.
 
 ```bash
-traderbro tv study values                    # last 60 bars, all studies on chart
-traderbro tv study values --last 30 --json
-traderbro tv study values --ids wPbb6S,yteGJ4 --last 10
-traderbro tv study values --include-volume --last 60 --json
-traderbro tv study values --json --jq '.bars[-1].studies'
+traderbro brochart study values                    # last 60 bars, all studies on chart
+traderbro brochart study values --last 30 --json
+traderbro brochart study values --ids wPbb6S,yteGJ4 --last 10
+traderbro brochart study values --include-volume --last 60 --json
+traderbro brochart study values --json --jq '.bars[-1].studies'
 ```
 
 **Flags:**
@@ -179,7 +187,7 @@ traderbro tv study values --json --jq '.bars[-1].studies'
 | Flag | Default | Notes |
 |---|---|---|
 | `--last N` | `60` | Tail-slice to the most recent N bars. `0` returns all loaded bars. |
-| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `tv study list`. |
+| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `brochart study list`. |
 | `--include-volume` | off | Add the Volume study just for this call, then remove it. Convenience for "I want volume aligned without setup boilerplate." |
 | `--json` | off | Machine-readable output. |
 
@@ -209,7 +217,7 @@ the key, so the JSON is self-describing. To extract values robustly in
 `jq`, use `startswith` or `test`:
 
 ```bash
-traderbro tv study values --last 1 --json \
+traderbro brochart study values --last 1 --json \
   | jq '.bars[-1].studies | to_entries[] | select(.key|startswith("Bollinger")) | .value'
 ```
 
@@ -228,10 +236,10 @@ freshly-added study returns populated values on the first call.
 Save the current chart layout and list saved layouts.
 
 ```bash
-traderbro tv save
-traderbro tv save "NVDA Failed H&S — May 2026"
-traderbro tv saved
-traderbro tv saved --json
+traderbro brochart save
+traderbro brochart save "NVDA Failed H&S — May 2026"
+traderbro brochart saved
+traderbro brochart saved --json
 ```
 
 ---
@@ -242,18 +250,18 @@ Control the visible date range and zoom level.
 
 ```bash
 # Exact date range
-traderbro tv range 2024-01-01
-traderbro tv range 2024-01-01 2025-01-01
+traderbro brochart range 2024-01-01
+traderbro brochart range 2024-01-01 2025-01-01
 
 # Zoom
-traderbro tv zoom in
-traderbro tv zoom out
-traderbro tv zoom reset
-traderbro tv zoom 12
+traderbro brochart zoom in
+traderbro brochart zoom out
+traderbro brochart zoom reset
+traderbro brochart zoom 12
 
 # Preset timeframes
-traderbro tv timeframe 6M
-traderbro tv timeframe 1Y 1D   # also set resolution
+traderbro brochart timeframe 6M
+traderbro brochart timeframe 1Y 1D   # also set resolution
 ```
 
 ---
@@ -263,10 +271,10 @@ traderbro tv timeframe 1Y 1D   # also set resolution
 Search for symbols via the UDF datafeed.
 
 ```bash
-traderbro tv search TSLA
-traderbro tv search Apple
-traderbro tv search nvidia --exchange NASDAQ
-traderbro tv search oil --type etf --json
+traderbro brochart search TSLA
+traderbro brochart search Apple
+traderbro brochart search nvidia --exchange NASDAQ
+traderbro brochart search oil --type etf --json
 ```
 
 ---
@@ -276,7 +284,7 @@ traderbro tv search oil --type etf --json
 Close open panels and popups before a screenshot.
 
 ```bash
-traderbro tv close
+traderbro brochart close
 ```
 
 ---
@@ -286,9 +294,9 @@ traderbro tv close
 List connected browser tabs and switch between them.
 
 ```bash
-traderbro tv charts
-traderbro tv charts --json
-traderbro tv use <id-prefix>
+traderbro brochart charts
+traderbro brochart charts --json
+traderbro brochart use <id-prefix>
 ```
 
 ---
@@ -299,10 +307,10 @@ Read-only diagnostic of the chart pipeline. Use at run start, between every K
 symbols in long loops, and after any error.
 
 ```bash
-traderbro tv health
-traderbro tv health --json
-traderbro tv health --quick                # skip slow udf_auth check
-traderbro tv health --mem-threshold 400    # fail if heap > 400 MB
+traderbro brochart health
+traderbro brochart health --json
+traderbro brochart health --quick                # skip slow udf_auth check
+traderbro brochart health --mem-threshold 400    # fail if heap > 400 MB
 ```
 
 Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
@@ -310,7 +318,7 @@ Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
 with shell `||`:
 
 ```bash
-traderbro tv health || traderbro tv refresh
+traderbro brochart health || traderbro brochart refresh
 ```
 
 Output (JSON):
@@ -341,10 +349,10 @@ memory or recover from stuck TV state (e.g. studies wedged after a
 resolution change).
 
 ```bash
-traderbro tv refresh
-traderbro tv refresh --json
-traderbro tv refresh --verify-with-bars    # also confirm UDF auth post-reload
-traderbro tv refresh --timeout 30s         # extend reconnect ceiling
+traderbro brochart refresh
+traderbro brochart refresh --json
+traderbro brochart refresh --verify-with-bars    # also confirm UDF auth post-reload
+traderbro brochart refresh --timeout 30s         # extend reconnect ceiling
 ```
 
 Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
@@ -355,8 +363,8 @@ Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
 expired token), backend issues, permanently missing symbol data.
 
 **Important:** after refresh, the chart restores whatever layout was last
-saved via `tv save` — *not necessarily an empty chart, and not necessarily
-the symbol you were just analysing*. Always re-issue `tv symbol X` after
+saved via `brochart save` — *not necessarily an empty chart, and not necessarily
+the symbol you were just analysing*. Always re-issue `brochart symbol X` after
 a refresh.
 
 ---
@@ -366,7 +374,7 @@ a refresh.
 Escape hatch for TradingView API calls not yet in a named command.
 
 ```bash
-traderbro tv eval "tvWidget.activeChart().symbol()"
+traderbro brochart eval "tvWidget.activeChart().symbol()"
 ```
 
 If you use `eval` for the same operation more than once, that pattern belongs in
@@ -378,28 +386,28 @@ If you use `eval` for the same operation more than once, that pattern belongs in
 
 ```bash
 # 1. Set chart
-traderbro tv symbol NASDAQ:NVDA 1D
+traderbro brochart symbol NASDAQ:NVDA 1D
 
 # 2. Set visible range
-traderbro tv range 2025-01-01
+traderbro brochart range 2025-01-01
 
 # 3. See what's on the chart
-traderbro tv close
-traderbro tv screenshot -o /tmp/before.png
+traderbro brochart close
+traderbro brochart screenshot -o /tmp/before.png
 
 # 4. Get authoritative timestamps for drawing
-traderbro tv bars --last 90 --json
+traderbro brochart bars --last 90 --json
 
 # 5. Annotate
-traderbro tv draw hline 850
-traderbro tv draw arrow up 2025-03-15 780
+traderbro brochart draw hline 850
+traderbro brochart draw arrow up 2025-03-15 780
 
 # 6. Verify
-traderbro tv close
-traderbro tv screenshot -o /tmp/annotated.png
+traderbro brochart close
+traderbro brochart screenshot -o /tmp/annotated.png
 
 # 7. Save
-traderbro tv save "NVDA support levels"
+traderbro brochart save "NVDA support levels"
 ```
 
 ## Numeric Pattern-Detection Workflow
@@ -408,12 +416,12 @@ For questions that need **exact indicator values** (not visual reading):
 
 ```bash
 # 1. Set chart and studies you want to measure
-traderbro tv symbol NASDAQ:AAPL
-traderbro tv study add "Relative Strength Index"
-traderbro tv study add "Bollinger Bands"
+traderbro brochart symbol NASDAQ:AAPL
+traderbro brochart study add "Relative Strength Index"
+traderbro brochart study add "Bollinger Bands"
 
 # 2. Pull bars + study values time-aligned (one call)
-traderbro tv study values --last 30 --include-volume --json > /tmp/data.json
+traderbro brochart study values --last 30 --include-volume --json > /tmp/data.json
 
 # 3. Run your numeric query against the time series with jq
 jq '
@@ -425,8 +433,8 @@ jq '
 ' /tmp/data.json
 
 # 4. Annotate the bars you found, then screenshot
-traderbro tv draw arrow down 2026-05-12 294.27
-traderbro tv screenshot -o /tmp/annotated.png
+traderbro brochart draw arrow down 2026-05-12 294.27
+traderbro brochart screenshot -o /tmp/annotated.png
 ```
 
 Use this workflow for RSI divergence, MACD crossover detection, Bollinger
@@ -437,34 +445,34 @@ for five worked patterns with verified output.
 ## Long-Running Agent Loops
 
 For runs over many symbols (>20) or long unattended sessions, gate the loop
-with `tv health` and recover with `tv refresh`. The pattern:
+with `brochart health` and recover with `brochart refresh`. The pattern:
 
 ```bash
 # Pre-flight: health check, refresh if unhealthy, abort if still bad
-traderbro tv health || {
-  traderbro tv refresh
-  traderbro tv health || exit 1
+traderbro brochart health || {
+  traderbro brochart refresh
+  traderbro brochart health || exit 1
 }
 
 # Set studies ONCE — they survive symbol switches and recompute automatically
-traderbro tv study add "Relative Strength Index"
+traderbro brochart study add "Relative Strength Index"
 
 count=0
 for sym in $(cat symbols.txt); do
   count=$((count + 1))
 
   # Only if your loop draws shapes per symbol
-  # traderbro tv draw clear
+  # traderbro brochart draw clear
 
-  traderbro tv symbol "$sym" || { echo "skip $sym"; continue; }
-  result=$(traderbro tv study values --last 60 --json --jq '.bars[-1]')
+  traderbro brochart symbol "$sym" || { echo "skip $sym"; continue; }
+  result=$(traderbro brochart study values --last 60 --json --jq '.bars[-1]')
   echo "$sym: $result"
 
   # Defensive refresh every 50 symbols
   if (( count % 50 == 0 )); then
-    traderbro tv refresh
-    traderbro tv symbol "$sym"               # re-set; refresh restores saved layout
-    traderbro tv study add "Relative Strength Index"   # re-add if not in saved layout
+    traderbro brochart refresh
+    traderbro brochart symbol "$sym"               # re-set; refresh restores saved layout
+    traderbro brochart study add "Relative Strength Index"   # re-add if not in saved layout
   fi
 done
 ```
