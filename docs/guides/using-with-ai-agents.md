@@ -186,3 +186,19 @@ Prints the complete markdown workflow including step-by-step commands, scoring l
 | Name | Description | Trigger keywords |
 |---|---|---|
 | `analyst-top-picks` | Finds stocks to buy from the best-performing analysts | "what should I buy", "best analyst picks", "top recommendations" |
+| `tvsandbox-setup` | **Read first** for the official tradingview.com chart: login gate, port 9333, single-Chrome rule | "tvsandbox", "set up tradingview", "intraday data", "extended hours" |
+| `tvsandbox-reading` | Read/judge one symbol from official data (bars + screenshot); no detector — agent decides | "read the chart", "is this bullish", "what pattern" |
+| `tvsandbox-scanning` | Bulk scan: `screen` → `metrics` → `sweep` across many symbols | "scan the market", "go through each chart", "find candidates" |
+| `tvsandbox-drawing` | Annotate with any of ~90 native TradingView objects via `tvsandbox draw` | "draw a fib", "mark support", "annotate the chart" |
+
+## Chart access — which command
+
+TraderBro reaches charts three ways; route by what you need:
+
+- **`tvsandbox`** — the official `tradingview.com/chart` over CDP. High-fidelity price/volume
+  (intraday, extended-hours, long history), bulk scanning, and native drawing. Start with
+  `traderbro skills show tvsandbox-setup`.
+- **`brochart`** — the traderbro.ai-hosted chart, carrying TraderBro's **proprietary overlays**
+  (analyst marks, calculated events, predictions).
+- **`calculated-events`** — server-side **pattern detection**. There is no geometry detector in
+  the CLI; on tvsandbox the agent judges bull/bear/continuation from the bars + screenshot.

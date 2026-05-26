@@ -39,12 +39,13 @@ The proprietary-data chart: TraderBro's custom overlays (analyst marks, calculat
 
 ## Chart Control — official tradingview.com chart (traderbro tvsandbox)
 
-The high-fidelity price/volume path via Chrome DevTools Protocol on a dedicated, app-owned Chrome (port 9333, profile ~/.traderbro/chrome-profile). Deeper intraday, extended hours, long history, and bulk pattern scanning. Sign in once with `traderbro tvsandbox login`.
+The high-fidelity price/volume path via Chrome DevTools Protocol on a dedicated, app-owned Chrome (port 9333, profile ~/.traderbro/chrome-profile). Deeper intraday, extended hours, long history, and bulk scanning. Sign in once with `traderbro tvsandbox login` (run `traderbro skills show tvsandbox-setup` first).
 
-- [tvsandbox Reference](/cli-reference/tvsandbox): login, whoami, eval, bars, detect, show, snap, frame, clear, screenshot, screen, metrics, funnel
-- `screen` calls TradingView's public scanner API directly — no browser, no login; everything else needs a signed-in session
-- Pattern hunting: `screen` (prefilter) → `metrics` (rank) → `detect`/`show` (confirm + draw H&S) → `snap` (clean PNG); `funnel` runs the whole prefilter→confirm pipeline and can write a Markdown report
-- Use `tvsandbox` when you need real intraday/extended-hours data or are looping over many symbols; use `brochart` when you need TraderBro's proprietary overlays
+- [tvsandbox Reference](/cli-reference/tvsandbox): login, whoami, eval, bars, snap, frame, screenshot, screen, metrics, sweep, draw, clear
+- `screen` calls TradingView's public scanner API directly — no browser, no login; everything else needs a signed-in session. One shared Chrome — run tvsandbox commands sequentially, never concurrently.
+- **No pattern detector** — the agent judges bull/bear/continuation from bars + screenshot; server-side pattern detection is `traderbro calculated-events`.
+- Workflow: `screen` (prefilter) → `metrics` (rank) → `sweep` (bulk per-symbol screenshot+bars for AI review) → read + decide; `draw <shape> --points` renders any of ~90 native TradingView objects (you supply the anchors), `clear` removes them
+- Use `tvsandbox` for real intraday/extended-hours data, bulk scanning, and native drawing; use `brochart` for TraderBro's proprietary overlays; use `calculated-events` for pattern detection
 
 ## Global flags (apply to all commands)
 

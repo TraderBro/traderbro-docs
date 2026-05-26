@@ -11,7 +11,7 @@ browser). The CLI launches and reuses that Chrome; you sign in once and the sess
 
 This is the high-fidelity price/volume path: deeper intraday resolutions, longer history, more
 realtime data, **extended-hours** bars, and the throughput to loop thousands of symbols for
-pattern detection.
+visual review.
 
 :::tip Which chart command?
 Use **`tvsandbox`** for raw market-data fidelity and bulk scanning from tradingview.com. For
@@ -25,9 +25,13 @@ traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
   9222) with a persistent profile at `~/.traderbro/chrome-profile`, bound to `127.0.0.1` only.
 - Login is detected from TradingView's own `window.user` (a real numeric user id), not the
   `sessionid` cookie. Sign in once with `tvsandbox login`; every later run reuses the session.
-- Data commands (`bars`, `detect`, `show`, `snap`, `metrics`, `funnel`) require a signed-in
-  session — guests cannot load arbitrary per-symbol data. `screen` is the exception: it calls
-  TradingView's public scanner API directly over HTTP, with no browser and no login.
+- Data commands (`bars`, `snap`, `screenshot`, `metrics`, `sweep`, and `draw --symbol`) require
+  a signed-in session — guests cannot load arbitrary per-symbol data. `screen` is the exception:
+  it calls TradingView's public scanner API directly over HTTP, with no browser and no login.
+- **No pattern detector.** tvsandbox does not detect chart patterns — the agent judges
+  bull/bear/continuation from the bars + screenshot, and server-side detection lives in
+  [`calculated-events`](./calculated-events.md). tvsandbox *draws* any native shape you anchor.
+- **One shared Chrome — run commands sequentially**, never concurrently.
 
 ## Prerequisites
 
@@ -92,41 +96,8 @@ traderbro tvsandbox bars NVDA --res 1D --json
 |---|---|---|
 | `--res` | `1D` | Chart resolution (e.g. `5`, `60`, `1D`, `1W`, `1M`) |
 
-Output (JSON): `{ "symbol", "res", "count", "bars": [[t,o,h,l,c,v], …] }`.
-
----
-
-### detect
-
-Load a symbol and run the head-and-shoulders detector on its bars.
-
-```bash
-traderbro tvsandbox detect NVDA --bear --res 1D
-traderbro tvsandbox detect NVDA --bull
-```
-
-| Flag | Default | Description |
-|---|---|---|
-| `--bear` | (default) | Bearish H&S top |
-| `--bull` | | Bullish inverse-H&S bottom |
-| `--res` | `1D` | Chart resolution |
-
----
-
-### show
-
-Detect and **draw** the H&S pattern on the chart, optionally saving a screenshot.
-
-```bash
-traderbro tvsandbox show NVDA --bull --screenshot /tmp/inv_hs.png
-```
-
-| Flag | Default | Description |
-|---|---|---|
-| `--bull` / `--bear` | `--bear` | Pattern direction |
-| `--res` | `1D` | Chart resolution |
-| `--screenshot` | | Save an image of the drawn chart to this path |
-| `--full` | `false` | Capture the full browser viewport instead of chart-only |
+Output (JSON): `{ "symbol", "res", "count", "bars": [{ "Time", "Open", "High", "Low", "Close", "Vol" }, …] }`.
+`Time` is unix seconds (UTC).
 
 ---
 
@@ -160,7 +131,7 @@ traderbro tvsandbox frame 300
 
 ### clear
 
-Remove shapes this CLI drew (leaves your own drawings untouched).
+Remove drawings this CLI made via `tvsandbox draw` (leaves your own drawings untouched).
 
 ```bash
 traderbro tvsandbox clear
@@ -190,8 +161,8 @@ traderbro tvsandbox screen --bull --limit 30
 
 | Flag | Default | Description |
 |---|---|---|
-| `--bear` | (default) | Genuine-uptrend names rolling over (H&S-top candidates) |
-| `--bull` | | Downtrend names turning up (inverse-H&S-bottom candidates) |
+| `--bear` | (default) | Genuine-uptrend names rolling over (topping candidates) |
+| `--bull` | | Downtrend names turning up (bottoming candidates) |
 | `--limit` | `300` | Max rows per stock/ETF query |
 
 ---
@@ -218,26 +189,58 @@ cat syms.txt | traderbro tvsandbox metrics --symbols-file -
 
 ---
 
-### funnel
+### sweep
 
-Full pipeline: stage 1 screens the US market over HTTP (no chart); stage 2 loads each candidate
-on the dedicated Chrome and confirms the H&S with the Go detector. Optionally writes a Markdown
-report.
+Bulk-capture artifacts for many symbols so an agent can review them. For each symbol it loads
+the chart, writes a framed screenshot (`<out-dir>/<TICKER>.png`) and its bars
+(`<out-dir>/<TICKER>.json`), then an `<out-dir>/index.json`. This is the "go through each chart"
+tool — it produces the artifacts; the **agent** reads the bars/images and decides
+bull/bear/continuation (there is no detector).
 
 ```bash
-traderbro tvsandbox funnel --bear                  # H&S tops, daily
-traderbro tvsandbox funnel --bull --res 1W         # inverse-H&S bottoms, weekly
-traderbro tvsandbox funnel --bear --res 1D,1W,1M   # multi-timeframe (confirm each TF)
-traderbro tvsandbox funnel --bull --max 0 --report bull.md   # full universe → report
+traderbro tvsandbox sweep NVDA,AAPL,MSFT --out-dir /tmp/charts
+traderbro tvsandbox sweep --universe sp500 --res 1D --out-dir /tmp/sp
+traderbro tvsandbox screen --bull --limit 40 --json | jq -r '.[].sym' \
+  | traderbro tvsandbox sweep --symbols-file - --out-dir /tmp/bull
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--bull` / `--bear` | `--bear` | Pattern direction |
-| `--res` | `1D` | Resolution; accepts a comma list (e.g. `1D,1W,1M`) |
-| `--max` | `40` | Max candidates to confirm (0 = all) |
-| `--universe` | | Scan a named index instead of the perf prefilter |
-| `--report` | | Write a Markdown report of the hits to this path |
+| `--res` | `1D` | Chart resolution |
+| `--universe` | | Index universe (`sp500`, `nasdaq100`, `dow`) instead of an arg list |
+| `--symbols-file` | | File of symbols (JSON array, `{symbols:[…]}`, or one per line; `-` = stdin) |
+| `--out-dir` | `tvsweep` | Directory for `<TICKER>.png` + `<TICKER>.json` + `index.json` |
+| `--bars` | `250` | Candles to frame into each screenshot |
+| `--no-bars` | `false` | Skip the per-symbol bars JSON (screenshots only) |
+
+---
+
+### draw
+
+Render any of TradingView's ~90 native drawing objects on the chart — a thin passthrough to
+`createMultipointShape`. You supply the shape name and anchor points; there is no auto-detection.
+
+```bash
+traderbro tvsandbox draw fib_retracement --points "2026-04-01:164.27,2026-05-15:236.54" --screenshot fib.png
+traderbro tvsandbox draw anchored_vwap   --points 2026-04-07
+traderbro tvsandbox draw head_and_shoulders --symbol WLK --points "t1:p1,...,t7:p7" --screenshot hs.png
+```
+
+Points are comma-separated `time:price`; `time` = `YYYY-MM-DD` or unix seconds; `price` may be
+omitted for tools that ignore it (VWAP, volume profile). Each tool needs a specific number of
+points — if wrong, TradingView's `Required N` error is surfaced. Available shapes include
+`trend_line`, `rectangle`, `fib_retracement`(2), `fib_channel`(3), `anchored_vwap`(1),
+`fixed_range_volume_profile`(2), `head_and_shoulders`(7), `triangle_pattern`/`abcd_pattern`(4),
+`xabcd_pattern`(5), `elliott_impulse_wave`(6), `long_position`, `text`, and many more.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--points` | | Anchor points `"t1:p1,t2:p2,..."` (required) |
+| `--symbol` | | Load this symbol first (else draw on the current chart) |
+| `--res` | `1D` | Resolution when `--symbol` is given |
+| `--color` | | Line/shape color (e.g. `#2962ff`) |
+| `--width` | | Line width |
+| `--screenshot` | | Capture a PNG after drawing |
 
 ## Exit codes
 
