@@ -263,6 +263,7 @@ traderbro screener run [flags]
 | `--filter` | string | — | Filter expression: `key:op:value`. Repeatable. |
 | `--sort` | string | `market_cap:desc` | Sort field and direction: `key:asc` or `key:desc` |
 | `--limit` | int | `50` | Max results (server cap: 500) |
+| `-c, --columns` | string | — | Comma-separated fields to return (e.g. `symbol,rsi,pe_ratio`). Omit → compact default set; `all` → every field. |
 | `--symbols-only` | bool | false | Output symbol list only — clean for piping |
 | `--json` | bool | false | Output as JSON |
 | `--plain` | bool | false | Tab-delimited output |
@@ -296,7 +297,27 @@ allowed values.
 
 Run responses include `total` (full match count before the `--limit` slice) and
 `has_more` (whether more rows exist beyond what was returned), so an agent can size
-the universe without paging.
+the universe without paging. The `columns` field echoes the projection that was
+applied (`null` when the full row was returned via `--columns all`).
+
+### Selecting columns
+
+The DataMatrix is ~300 fields wide. **Always name the columns you need** with
+`--columns` — it makes responses faster, smaller, and focused on the question:
+
+```bash
+# return only the fields the question is about
+traderbro screener run --filter "rsi:lt:30" --columns symbol,rsi,close_price,sector
+
+# the full ~300-field row (rare — exports / inspection)
+traderbro screener run --filter "market_cap:gt:50B" --columns all
+```
+
+If you omit `--columns`, the server projects to a **compact default set**
+(`symbol, name, sector, close_price, market_cap, change, ch1y, pe_ratio, rsi,
+dividend_yield, volume`). An unknown column returns `400` with `did_you_mean` —
+discover keys with `screener schema --search <concept>`. In table/plain output
+the displayed columns follow whatever you requested.
 
 ### Value suffixes
 
