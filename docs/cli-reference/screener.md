@@ -80,6 +80,11 @@ traderbro screener schema --fields rsi,in_index,revenue --json
 traderbro screener schema --source tradingview --group etf
 ```
 
+Schema tables (search / detail / group) include a **Source** column: `snapshot`
+(served locally from the matrix, fast) vs `live(TV)` (a TradingView passthrough field
+fetched live via federation — see the Federation section). Each result's `source`
+(`stockanalysis` | `tradingview`) is also in the JSON.
+
 ### Output (search, JSON)
 
 ```json
@@ -293,12 +298,79 @@ A non-default timeframe/period/window is applied with an `@` suffix on the key:
 `rsi@1W:lt:30`, `revenue@fq:gt:250M`. Invalid modifiers return `400` with the
 allowed values.
 
+### Field-vs-field comparison (`@column`)
+
+A filter value can reference **another column** instead of a constant — prefix it
+with `@`. The comparison runs server-side over the **whole universe** (not just the
+returned page), so `total` is the true count.
+
+```bash
+# uptrend regime: 50-day MA above the 200-day MA
+traderbro screener run --filter "ma50:gt:@ma200" --columns symbol,ma50,ma200
+
+# within 5% of the 52-week high (scale the RHS)
+traderbro screener run --filter "close:gte:@high52*0.95"
+
+# cheaper than its sector
+traderbro screener run --filter "pe_ratio:lt:@sector_pe"
+
+# bullish MACD (both operands are live TradingView fields)
+traderbro screener run --filter "market_cap:gt:200B" --filter "MACD.macd:gt:@MACD.signal"
+```
+
+- **Operand grammar:** `@field`, `@field*k` / `@field/k` (scale), `@field+c` / `@field-c`
+  (offset), combinable as `@field*k+c`. The field may itself carry a timeframe
+  modifier (`@rsi@1W`).
+- **Operators:** `gt`, `lt`, `gte`, `lte` only (float equality / ranges / text don't
+  apply column-to-column). Other ops return `400`.
+- **Both operands must be numeric**; an unknown or non-numeric RHS returns `400`
+  (with `did_you_mean`).
+- **AND-only / binary:** comparisons are ordinary `--filter` entries, ANDed with the
+  rest. Each is binary — write `a < b < c` as two filters (`a:lt:@b` + `b:lt:@c`).
+- **Federated operands:** if either operand is a live TradingView field, the
+  comparison runs *after* probing TV and **cannot narrow the probe set** — pair it
+  with a selective stored filter (`market_cap`, `sector`, `in_index`) or it returns
+  `federation: needs_narrowing` (see Federation below).
+
 ### Response fields
 
 Run responses include `total` (full match count before the `--limit` slice) and
 `has_more` (whether more rows exist beyond what was returned), so an agent can size
 the universe without paging. The `columns` field echoes the projection that was
 applied (`null` when the full row was returned via `--columns all`).
+
+#### Federation (live TradingView passthrough)
+
+When a screen touches a **federated** field (live TradingView data, e.g. `aum`,
+`expense_ratio`), the response also carries:
+
+| Field | Meaning |
+|---|---|
+| `federation` | `live` (all probed symbols resolved) · `partial` (some symbols couldn't be mapped to TradingView) · `unresolved` (none could be mapped — live side empty) · `unavailable` (federation disabled) · `needs_narrowing` (stored filter not selective enough to probe) |
+| `federation_unresolved` | `{count, reason, sample}` — symbols excluded from the live side because they have **no TradingView symbol mapping**. In table mode this prints to stderr as `live data unavailable for N symbol(s) (no TradingView mapping)`. |
+
+`unresolved` symbols are **never** silently dropped or shown as a null value: a row
+that matched the stored filters still appears (its federated column simply omitted),
+and a federated *filter* never treats an unmapped symbol as "failed the filter" — it
+is reported in `federation_unresolved` instead. Coverage is broad for US, Japan,
+China, Korea, Hong Kong, Saudi, Canada, UK-primary and NSE-India; some markets
+(e.g. BSE numeric scrips, LSE foreign secondaries) may be unresolved.
+
+#### All TradingView fields are queryable
+
+Every screenable TradingView field (~700) is a queryable federated field, referenced
+by its **raw TV column name** (e.g. `return_on_equity_fq`, `price_earnings_ttm`,
+`total_revenue_ttm`). Discover them with `screener schema --search "<concept>"` — TV
+fields are tagged `source: tradingview` (vs `snapshot` for local matrix fields). A
+field with `freshness: live` in the response was served live from TradingView. These
+fetch live (so they need `SCREENER_FEDERATION_ENABLED`) and only for symbols that
+crosswalk to TV's namespace (others appear in `federation_unresolved`).
+
+```bash
+screener schema --search "return on equity"          # find TV field names
+screener run --filter "return_on_equity_fq:gt:20" \  # query bare, routes live
+  --filter "market_cap:gt:1B" --columns symbol,return_on_equity_fq
+```
 
 ### Selecting columns
 
