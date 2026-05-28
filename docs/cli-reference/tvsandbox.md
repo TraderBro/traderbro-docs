@@ -46,7 +46,37 @@ traderbro tvsandbox whoami    # confirm: "signed in as <user>"
 |---|---|---|
 | `--cdp-port` | `9333` | CDP debug port for the dedicated Chrome |
 | `--profile` | `~/.traderbro/chrome-profile` | Chrome profile directory |
+| `--tab` | (empty) | Address a specific tab by its target id (from `tvsandbox open`) — for per-subagent/parallel use. Empty = the shared default tab. |
+| `--max-tabs` | `2` | Cap on CLI-owned tabs `open` will create. Default matches the TradingView Basic connection limit (Premium = 50). Env: `TVSANDBOX_MAX_TABS` |
 | `--json` | `false` | Output as JSON |
+
+## Parallel tabs & the TradingView connection limit
+
+Each agent or conversation thread can own its **own tab** so concurrent work doesn't
+collide on one shared chart:
+
+```bash
+id=$(traderbro tvsandbox open)            # create a tab, print its target id
+traderbro tvsandbox bars NVDA --tab "$id"
+traderbro tvsandbox snap NVDA --tab "$id" --out nvda.png
+traderbro tvsandbox close --tab "$id"     # close it when done
+```
+
+- **Within one tab:** strictly sequential (never two commands against the same tab at once).
+- **Across tabs:** parallel is fine — but only up to the **TradingView plan's
+  simultaneous-connection cap: Basic = 2, Premium = 50**. Each live data tab is one
+  connection (the shared default tab counts too).
+- Exceeding the cap makes TradingView close the connection (*"We've closed this
+  connection"*) and data stops loading. **Recover:**
+
+  ```bash
+  traderbro tvsandbox close --all          # free connections (or --stale 10m)
+  traderbro tvsandbox eval "(()=>{const b=[...document.querySelectorAll('button')].find(x=>/restore connection/i.test(x.textContent||''));if(b){b.click();return 'restored';}return 'no-modal';})()"
+  traderbro tvsandbox bars NASDAQ:AAPL     # confirm data loads again
+  ```
+
+On Basic, run parallel subagents in **waves of ≤2** and close the shared/default tab
+during parallel work.
 
 ## Commands
 
@@ -68,6 +98,41 @@ Report whether the dedicated Chrome holds a logged-in TradingView session.
 ```bash
 traderbro tvsandbox whoami --json
 # { "loggedIn": true, "username": "...", "port": 9333 }
+```
+
+---
+
+### open
+
+Create a new logged-in TradingView tab and print its target id (the ownership token
+for `--tab`). Use one tab per agent/thread. Respects `--max-tabs`.
+
+```bash
+id=$(traderbro tvsandbox open)
+traderbro tvsandbox open --json   # { "tab": "<id>", "port": 9333 }
+```
+
+---
+
+### close
+
+Close a tab opened by `open`, or reap leftovers.
+
+```bash
+traderbro tvsandbox close --tab <id>     # close your tab
+traderbro tvsandbox close --all          # close all CLI-owned tabs
+traderbro tvsandbox close --stale 10m    # reap CLI tabs older than 10m (crashed subagents)
+```
+
+---
+
+### tabs
+
+List open TradingView tabs, marking CLI-owned ones and their age.
+
+```bash
+traderbro tvsandbox tabs
+traderbro tvsandbox tabs --json
 ```
 
 ---
@@ -141,11 +206,13 @@ traderbro tvsandbox clear
 
 ### screenshot
 
-Capture the current chart to a PNG.
+Capture the current chart **as-is — this does NOT frame the view**. After `bars`/`metrics`
+the on-screen chart is unframed (candles crammed into a sliver). For a clean, readable
+figure use [`snap`](#snap) (loads + frames + captures); if you must use `screenshot`, run
+`tvsandbox frame 250` immediately before it.
 
 ```bash
-traderbro tvsandbox screenshot /tmp/chart.png
-traderbro tvsandbox screenshot /tmp/chart.png --full
+traderbro tvsandbox frame 250 && traderbro tvsandbox screenshot /tmp/chart.png
 ```
 
 ---
