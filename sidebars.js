@@ -45,7 +45,6 @@ const sidebars = {
       label: 'Concepts',
       items: [
         'concepts/return-calculation',
-        'concepts/accuracy-rate',
         'concepts/prediction-model',
         'concepts/sector-edge',
       ],

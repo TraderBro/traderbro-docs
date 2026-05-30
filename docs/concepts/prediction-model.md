@@ -59,4 +59,3 @@ Some fields may be null for valid reasons:
 | `stated_price_target` | No specific target mentioned in the content |
 | `is_directionally_correct` | Return window has not matured yet |
 | `avg_return_3m` | Insufficient matured windows to calculate |
-| `accuracy_rate` | Fewer than 10 matured predictions |

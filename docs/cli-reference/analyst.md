@@ -23,22 +23,21 @@ traderbro analyst list [flags]
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--sort` | string | `accuracy` | Sort by: `accuracy`, `return`, `predictions`, `name` |
+| `--sort` | string | `return` | Sort by: `return`, `predictions`, `name` |
 | `--period` | string | — | Return period for sort/display: `7d`, `1m`, `3m`, `6m`, `1y` |
 | `--exchange` | string | — | Filter by exchange analysts cover (e.g. `NASDAQ`, `NYSE`) |
 | `--asset-class` | string | — | Filter by asset class (e.g. `Equities`, `Crypto`) |
 | `--active` | bool | `true` | Only active analysts |
 | `--min-predictions` | int | `0` | Minimum prediction count |
 | `--min-return` | float | — | Minimum lifetime return % (e.g. `5` = 5%) |
-| `--min-accuracy` | float | `0` | Minimum accuracy % (e.g. `60` = 60%) |
 | `--sector` | string | — | Filter to analysts with calls in this sector (e.g. `Technology`) |
 | `--industry` | string | — | Filter to analysts with calls in this industry (e.g. `Semiconductors`) |
 
 ### Examples
 
 ```bash
-# Top 10 analysts by accuracy
-traderbro analyst list --sort accuracy --limit 10
+# Top 10 analysts by return
+traderbro analyst list --sort return --limit 10
 
 # Best 3-month return, NASDAQ analysts, minimum 15 predictions
 traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predictions 15
@@ -46,17 +45,17 @@ traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predict
 # Analysts covering Technology sector with 5+ predictions, JSON output
 traderbro analyst list --sector Technology --min-predictions 5 --json
 
-# Analysts with ≥60% accuracy and positive returns
-traderbro analyst list --min-accuracy 60 --min-return 0.01 --json
+# Analysts with positive returns and a meaningful track record
+traderbro analyst list --min-return 0.01 --min-predictions 15 --json
 ```
 
 ### Output (Table mode)
 
 ```
-Slug              Name            Accuracy   Predictions   Return %
-────────────────────────────────────────────────────────────────────
-noLimitGains      No Limit Gains  71.2%      42            +18.4%
-aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+Slug              Name            Predictions   Return %
+──────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  42            +18.4%
+aleabitoreddit    Alea Bitor      31            +14.1%
 ```
 
 When `--sector` or `--industry` is used, the table shows segment-specific columns:
@@ -110,7 +109,6 @@ traderbro analyst get aleabitoreddit --json
 ```
 Slug:         noLimitGains
 Name:         No Limit Gains
-Accuracy:     71.2%
 Predictions:  42
 Return %:     18.4%
 Active:       true
@@ -123,7 +121,6 @@ Bio:          ...
 {
   "slug": "noLimitGains",
   "name": "No Limit Gains",
-  "accuracy_rate": 71.2,
   "predictions_count": 42,
   "overall_return_pct": 18.4,
   "is_active": true,
@@ -179,7 +176,7 @@ traderbro analyst predictions crux_capital_ --symbol TSLA --json
 
 ## traderbro analyst sector-edge
 
-Show an analyst's return and accuracy breakdown by sector or industry.
+Show an analyst's return breakdown by sector or industry.
 
 ### Usage
 
@@ -211,11 +208,11 @@ traderbro analyst sector-edge crux_capital_ --period 1m --json
 ### Output (Table mode)
 
 ```
-Sector          Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────
-Technology      14      78.6%        +24.3%
-Financials      8       62.5%        +9.1%
-Energy          3       66.7%        —
+Sector          Calls   Return % (3M)
+─────────────────────────────────────────
+Technology      14      +24.3%
+Financials      8       +9.1%
+Energy          3       —
 ```
 
 `—` means fewer than `--min-calls` or the return window has not matured for enough calls yet.
@@ -230,7 +227,6 @@ Energy          3       66.7%        —
     {
       "label": "Technology",
       "calls": 14,
-      "accuracy": 78.6,
       "avg_return": 24.3
     }
   ]
@@ -241,7 +237,7 @@ Energy          3       66.7%        —
 
 ## traderbro analyst sector-map
 
-Show aggregate return and accuracy across **all analysts** by sector or industry.
+Show aggregate return across **all analysts** by sector or industry.
 
 ### Usage
 
@@ -279,10 +275,10 @@ traderbro analyst sector-map --date-from 2025-03-01 --date-to 2025-03-31 --perio
 ### Output (Table mode)
 
 ```
-Sector          Calls   Analysts   Accuracy %   Return % (Max)
-───────────────────────────────────────────────────────────────
-Technology      248     18         66.9%        +15.2%
-Financials      134     12         61.2%        +8.7%
+Sector          Calls   Analysts   Return % (Max)
+──────────────────────────────────────────────────
+Technology      248     18         +15.2%
+Financials      134     12         +8.7%
 ```
 
 ### Output (JSON mode)
@@ -296,7 +292,6 @@ Financials      134     12         61.2%        +8.7%
       "label": "Technology",
       "calls": 248,
       "analyst_count": 18,
-      "accuracy": 66.9,
       "avg_return": 15.2
     }
   ]

@@ -67,8 +67,8 @@ traderbro analyst list --plain | awk -F'\t' '{print $1, $3}'
 # Just slugs
 traderbro analyst list --jq '.results[].slug'
 
-# Slugs and accuracy as CSV
-traderbro analyst list --jq '.results[] | [.slug, .accuracy_rate] | @csv'
+# Slugs and return as CSV
+traderbro analyst list --jq '.results[] | [.slug, .overall_return_pct] | @csv'
 
 # Predictions for NVDA, bullish only, return > 10%
 traderbro prediction list --symbol NVDA --direction bullish --json \

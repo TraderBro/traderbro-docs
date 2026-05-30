@@ -9,7 +9,7 @@ title: TraderBro CLI
 Query analyst predictions, returns, sector analytics, and research — from your terminal.
 
 ```bash
-traderbro analyst list --sort accuracy --limit 10 --json
+traderbro analyst list --sort return --limit 10 --json
 traderbro analyst sector-edge noLimitGains --period 3m
 traderbro prediction list --symbol NVDA --since 2025-01-01 --json
 ```
@@ -34,7 +34,7 @@ Designed for both humans and AI agents. Every command supports `--json` for mach
 
 ## What you can do
 
-- **Rank analysts** by accuracy, return, or prediction count across any time window (7d, 1m, 3m, 6m, 1y)
+- **Rank analysts** by return or prediction count across any time window (7d, 1m, 3m, 6m, 1y)
 - **Drill into sector edge** — see which sectors an analyst consistently outperforms in
 - **Browse predictions** — filter by symbol, direction, date range, and correctness
 - **Monitor content** — query the tweets, videos, and articles that feed the prediction pipeline

@@ -5,7 +5,7 @@ title: Sector Edge
 
 # Sector Edge
 
-Sector edge is a per-analyst breakdown of accuracy and return by sector or industry, showing where an analyst's expertise is concentrated.
+Sector edge is a per-analyst breakdown of return by sector or industry, showing where an analyst's expertise is concentrated.
 
 ---
 
@@ -38,12 +38,11 @@ traderbro analyst sector-edge noLimitGains --min-calls 5 --period 3m
 
 ## Interpreting the output
 
-| Accuracy | Return | Interpretation |
+| Return | Calls | Interpretation |
 |---|---|---|
-| High | High | Genuine edge — analyst understands this sector deeply |
-| High | Low | Correct direction but small moves; may be a conservative sector |
-| Low | High | High-risk style in this sector; volatile outcomes |
-| Low | Low | No edge here; avoid this analyst's calls in this sector |
+| High | Many | Genuine edge — consistent gains across enough calls to trust it |
+| High | Few | Promising, but a thin sample; could be luck. Raise `--min-calls` |
+| Low / negative | Many | No edge here; this analyst's calls in this sector underperform |
 | — | — | Fewer than min-calls, or windows not yet matured |
 
 ---

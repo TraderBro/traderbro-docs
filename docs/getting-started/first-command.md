@@ -10,16 +10,16 @@ Once you've [authenticated](/getting-started/authentication), try these commands
 ## See top analysts
 
 ```bash
-traderbro analyst list --sort accuracy --limit 10
+traderbro analyst list --sort return --limit 10
 ```
 
 Output:
 
 ```
-Slug              Name            Accuracy   Predictions   Return %
-────────────────────────────────────────────────────────────────────
-noLimitGains      No Limit Gains  71.2%      42            +18.4%
-aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+Slug              Name            Predictions   Return %
+──────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  42            +18.4%
+aleabitoreddit    Alea Bitor      31            +14.1%
 ...
 ```
 
@@ -48,7 +48,7 @@ traderbro prediction list --symbol NVDA --direction bullish --json
 Add `--json` to any command for machine-readable output — use this for scripts and AI agents:
 
 ```bash
-traderbro analyst list --sort accuracy --limit 5 --json
+traderbro analyst list --sort return --limit 5 --json
 ```
 
 ```json
@@ -59,7 +59,6 @@ traderbro analyst list --sort accuracy --limit 5 --json
     {
       "slug": "noLimitGains",
       "name": "No Limit Gains",
-      "accuracy_rate": 71.2,
       "predictions_count": 42,
       "overall_return_pct": 18.4
     }
@@ -70,8 +69,8 @@ traderbro analyst list --sort accuracy --limit 5 --json
 ## Inline filtering with `--jq`
 
 ```bash
-# Just names and accuracy
-traderbro analyst list --limit 10 --jq '.results[] | {slug, accuracy_rate}'
+# Just names and return
+traderbro analyst list --limit 10 --jq '.results[] | {slug, overall_return_pct}'
 ```
 
 ---

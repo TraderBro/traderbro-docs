@@ -11,7 +11,7 @@ An analyst who is great overall may be mediocre in specific sectors. Sector edge
 
 ## Why sector edge matters
 
-Two analysts may both have 65% accuracy lifetime. But one might be 80% accurate in Technology and 45% in Energy, while the other is consistently 65% across all sectors. Before acting on a tech call, you want to know which category each analyst falls into.
+Two analysts may both post strong overall returns. But one might make most of that return in Technology and lose money in Energy, while the other is consistently solid across all sectors. Before acting on a tech call, you want to know which category each analyst falls into.
 
 ---
 
@@ -24,11 +24,11 @@ traderbro analyst sector-edge noLimitGains --period 3m
 Output:
 
 ```
-Sector          Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────
-Technology      14      78.6%        +24.3%
-Financials      8       62.5%        +9.1%
-Energy          3       —            —
+Sector          Calls   Return % (3M)
+─────────────────────────────────────────
+Technology      14      +24.3%
+Financials      8       +9.1%
+Energy          3       —
 ```
 
 `—` appears when there are fewer calls than `--min-calls` (default 3) or return windows haven't matured.
@@ -40,11 +40,11 @@ traderbro analyst sector-edge noLimitGains --group-by industry --period 3m
 ```
 
 ```
-Industry            Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────────
-Semiconductors      9       88.9%        +31.2%
-Software            5       60.0%        +14.1%
-Banks               4       75.0%        +7.3%
+Industry            Calls   Return % (3M)
+─────────────────────────────────────────────
+Semiconductors      9       +31.2%
+Software            5       +14.1%
+Banks               4       +7.3%
 ```
 
 ---
@@ -72,11 +72,11 @@ traderbro analyst sector-map --period 3m
 ```
 
 ```
-Sector          Calls   Analysts   Accuracy %   Return % (3M)
-───────────────────────────────────────────────────────────────
-Technology      248     18         66.9%        +15.2%
-Financials      134     12         61.2%        +8.7%
-Energy          87      9          58.6%        +4.1%
+Sector          Calls   Analysts   Return % (3M)
+──────────────────────────────────────────────────
+Technology      248     18         +15.2%
+Financials      134     12         +8.7%
+Energy          87      9          +4.1%
 ```
 
 This tells you which sectors the TraderBro analyst pool has the most reliable signal in overall — useful for knowing which types of calls to trust most.

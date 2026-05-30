@@ -9,39 +9,25 @@ This guide walks through the most useful combinations of filters for discovering
 
 ---
 
-## Start with accuracy
+## Start with return
 
-The default sort. Gets you analysts with the highest directional hit rate:
-
-```bash
-traderbro analyst list --sort accuracy --limit 20
-```
-
-Accuracy alone is not enough — an analyst with 10 predictions at 80% accuracy is less meaningful than one with 100 predictions at 70%.
-
-Add a minimum prediction count:
+The default sort. Return is how TraderBro measures analyst quality — how much money an analyst's calls would have made:
 
 ```bash
-traderbro analyst list --sort accuracy --min-predictions 20 --limit 20
+traderbro analyst list --sort return --limit 20
 ```
 
----
-
-## Sort by return instead
-
-Accuracy measures whether calls are directionally correct. Return measures how much money those calls would have made:
+Return alone is not enough — an analyst with 10 predictions is less meaningful than one with 100. Add a minimum prediction count so a couple of lucky calls don't top the list:
 
 ```bash
-traderbro analyst list --sort return --min-predictions 15 --limit 10
+traderbro analyst list --sort return --min-predictions 20 --limit 20
 ```
-
-A high-return analyst who is only 55% accurate may still outperform a 75% accurate analyst with low-magnitude calls.
 
 ---
 
 ## Use a time window
 
-Return and accuracy sorted over a specific period:
+Return sorted over a specific period:
 
 ```bash
 # Best analysts by 3-month return
@@ -61,7 +47,7 @@ See [Filtering by Period](/guides/filtering-by-period) for a full explanation of
 
 ```bash
 # US-focused analysts
-traderbro analyst list --country US --sort accuracy --min-predictions 20
+traderbro analyst list --country US --sort return --min-predictions 20
 
 # Bangladesh market analysts
 traderbro analyst list --country BD --sort return
@@ -85,14 +71,13 @@ The return shown in sector/industry mode is the analyst's return within that seg
 ## Combine filters
 
 ```bash
-# US Technology analysts, 3-month return, ≥15 predictions, ≥60% accuracy
+# US Technology analysts, 3-month return, ≥15 predictions
 traderbro analyst list \
   --country US \
   --sector Technology \
   --period 3m \
   --sort return \
   --min-predictions 15 \
-  --min-accuracy 60 \
   --json
 ```
 
