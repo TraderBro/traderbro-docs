@@ -29,6 +29,7 @@ traderbro prediction list [flags]
 | `--since` | string | — | Predictions published on or after (YYYY-MM-DD) |
 | `--until` | string | — | Predictions published on or before (YYYY-MM-DD) |
 | `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` (combine with `--symbol`) |
+| `--tz` | string | — | Render `published_at` in this IANA zone, e.g. `America/New_York`, `Asia/Dhaka` (default: UTC) |
 | `--correct` | string | — | Filter by correctness: `true` or `false` |
 | `--sort` | string | `date` | Sort by: `date`, `return`, `confidence` |
 

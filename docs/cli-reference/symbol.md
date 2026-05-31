@@ -165,8 +165,9 @@ traderbro symbol trending [flags]
 | `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `volume`, `bullish`, `bearish`, `skew`, `change` |
 | `--min-predictions` | int | `0` | Drop symbols with fewer than N predictions in the window |
 | `--summary` | bool | `false` | Window aggregates only (totals, ratio, unique symbols/analysts) — for live-tape posts |
+| `--tz` | string | — | Render timestamps in this IANA zone (default: each symbol's exchange / market time) |
 
-`--sort skew` ranks by `bull_bear_ratio`; `--sort change` ranks by `pct_change_vs_prior_window` (prediction volume vs the immediately-prior equal-length window — momentum). Both require a bounded `--since`. Each result includes `bull_bear_ratio` and `pct_change_vs_prior_window`; `latest_prediction_at` is ISO 8601 in market time (ET).
+`--sort skew` ranks by `bull_bear_ratio`; `--sort change` ranks by `pct_change_vs_prior_window` (prediction volume vs the immediately-prior equal-length window — momentum). Both require a bounded `--since`. Each result includes `bull_bear_ratio` and `pct_change_vs_prior_window`. `latest_prediction_at` is ISO 8601 in **market time = the symbol's exchange timezone** (US → `-04:00/-05:00`, DSE → `+06:00`, Tadawul → `+03:00`); pass `--tz America/New_York` (or any IANA zone) to force one zone for the whole response. In `--summary` mode timestamps use `--tz` or UTC (aggregates span many exchanges).
 
 ### Examples
 
