@@ -23,22 +23,21 @@ traderbro analyst list [flags]
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--sort` | string | `accuracy` | Sort by: `accuracy`, `return`, `predictions`, `name` |
+| `--sort` | string | `return` | Sort by: `return`, `predictions`, `name` |
 | `--period` | string | — | Return period for sort/display: `7d`, `1m`, `3m`, `6m`, `1y` |
 | `--exchange` | string | — | Filter by exchange analysts cover (e.g. `NASDAQ`, `NYSE`) |
 | `--asset-class` | string | — | Filter by asset class (e.g. `Equities`, `Crypto`) |
 | `--active` | bool | `true` | Only active analysts |
 | `--min-predictions` | int | `0` | Minimum prediction count |
 | `--min-return` | float | — | Minimum lifetime return % (e.g. `5` = 5%) |
-| `--min-accuracy` | float | `0` | Minimum accuracy % (e.g. `60` = 60%) |
 | `--sector` | string | — | Filter to analysts with calls in this sector (e.g. `Technology`) |
 | `--industry` | string | — | Filter to analysts with calls in this industry (e.g. `Semiconductors`) |
 
 ### Examples
 
 ```bash
-# Top 10 analysts by accuracy
-traderbro analyst list --sort accuracy --limit 10
+# Top 10 analysts by return
+traderbro analyst list --sort return --limit 10
 
 # Best 3-month return, NASDAQ analysts, minimum 15 predictions
 traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predictions 15
@@ -46,17 +45,17 @@ traderbro analyst list --period 3m --sort return --exchange NASDAQ --min-predict
 # Analysts covering Technology sector with 5+ predictions, JSON output
 traderbro analyst list --sector Technology --min-predictions 5 --json
 
-# Analysts with ≥60% accuracy and positive returns
-traderbro analyst list --min-accuracy 60 --min-return 0.01 --json
+# Analysts with positive returns and a meaningful track record
+traderbro analyst list --min-return 0.01 --min-predictions 15 --json
 ```
 
 ### Output (Table mode)
 
 ```
-Slug              Name            Accuracy   Predictions   Return %
-────────────────────────────────────────────────────────────────────
-noLimitGains      No Limit Gains  71.2%      42            +18.4%
-aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+Slug              Name            Predictions   Return %
+──────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  42            +18.4%
+aleabitoreddit    Alea Bitor      31            +14.1%
 ```
 
 When `--sector` or `--industry` is used, the table shows segment-specific columns:
@@ -110,7 +109,6 @@ traderbro analyst get aleabitoreddit --json
 ```
 Slug:         noLimitGains
 Name:         No Limit Gains
-Accuracy:     71.2%
 Predictions:  42
 Return %:     18.4%
 Active:       true
@@ -123,7 +121,6 @@ Bio:          ...
 {
   "slug": "noLimitGains",
   "name": "No Limit Gains",
-  "accuracy_rate": 71.2,
   "predictions_count": 42,
   "overall_return_pct": 18.4,
   "is_active": true,
@@ -140,15 +137,23 @@ List predictions made by an analyst.
 ### Usage
 
 ```bash
-traderbro analyst predictions <slug> [flags]
+traderbro analyst predictions [slug] [flags]
 ```
+
+The analyst can be given as the positional `slug` or via `--handle` (equivalent).
 
 ### Flags
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
+| `--handle` | string | — | Analyst handle/slug (alternative to the positional arg) |
 | `--symbol` | string | — | Filter by ticker (e.g. `AAPL`) |
 | `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
+| `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` |
+| `--since` | string | — | Filter after date (YYYY-MM-DD) |
+| `--until` | string | — | Filter before date (YYYY-MM-DD) |
+| `--tz` | string | — | Render `published_at` in this IANA zone, e.g. `America/New_York`, `Asia/Dhaka` (default: UTC) |
+| `--limit` | int | `20` | Max results (global flag) |
 
 ### Examples
 
@@ -156,6 +161,9 @@ traderbro analyst predictions <slug> [flags]
 traderbro analyst predictions noLimitGains
 traderbro analyst predictions aleabitoreddit --direction bullish --json
 traderbro analyst predictions crux_capital_ --symbol TSLA --json
+
+# A specific analyst's recent prints (last 24h), via --handle
+traderbro analyst predictions --handle noLimitGains --window 24h --json
 ```
 
 ### Output (JSON mode)
@@ -179,7 +187,7 @@ traderbro analyst predictions crux_capital_ --symbol TSLA --json
 
 ## traderbro analyst sector-edge
 
-Show an analyst's return and accuracy breakdown by sector or industry.
+Show an analyst's return breakdown by sector or industry.
 
 ### Usage
 
@@ -211,11 +219,11 @@ traderbro analyst sector-edge crux_capital_ --period 1m --json
 ### Output (Table mode)
 
 ```
-Sector          Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────
-Technology      14      78.6%        +24.3%
-Financials      8       62.5%        +9.1%
-Energy          3       66.7%        —
+Sector          Calls   Return % (3M)
+─────────────────────────────────────────
+Technology      14      +24.3%
+Financials      8       +9.1%
+Energy          3       —
 ```
 
 `—` means fewer than `--min-calls` or the return window has not matured for enough calls yet.
@@ -230,7 +238,6 @@ Energy          3       66.7%        —
     {
       "label": "Technology",
       "calls": 14,
-      "accuracy": 78.6,
       "avg_return": 24.3
     }
   ]
@@ -241,7 +248,7 @@ Energy          3       66.7%        —
 
 ## traderbro analyst sector-map
 
-Show aggregate return and accuracy across **all analysts** by sector or industry.
+Show aggregate return across **all analysts** by sector or industry.
 
 ### Usage
 
@@ -279,10 +286,10 @@ traderbro analyst sector-map --date-from 2025-03-01 --date-to 2025-03-31 --perio
 ### Output (Table mode)
 
 ```
-Sector          Calls   Analysts   Accuracy %   Return % (Max)
-───────────────────────────────────────────────────────────────
-Technology      248     18         66.9%        +15.2%
-Financials      134     12         61.2%        +8.7%
+Sector          Calls   Analysts   Return % (Max)
+──────────────────────────────────────────────────
+Technology      248     18         +15.2%
+Financials      134     12         +8.7%
 ```
 
 ### Output (JSON mode)
@@ -296,7 +303,6 @@ Financials      134     12         61.2%        +8.7%
       "label": "Technology",
       "calls": 248,
       "analyst_count": 18,
-      "accuracy": 66.9,
       "avg_return": 15.2
     }
   ]
@@ -387,162 +393,496 @@ NVDA       risk_mention  NVDA supply constraints remain a risk into...      2026
 | `3` | Analyst not found |
 | `4` | Validation error (invalid flag value) |
 | `5` | Network error |
-# traderbro analyze
+---
+title: brochart
+sidebar_label: brochart
+---
 
-Generate a candlestick chart with indicator overlays, scan for candlestick patterns, detect structural chart patterns, and return a unified signals summary.
+# traderbro brochart
 
-## Usage
+Control the **traderbro.ai-hosted** TradingView charting library from the CLI via a local
+WebSocket bridge. This is the proprietary-data chart — it carries TraderBro's custom overlays
+(analyst marks, calculated events, predictions) that cannot be loaded into tradingview.com.
 
+:::tip Which chart command?
+Use **`brochart`** for proprietary overlays on the traderbro.ai chart. For high-fidelity
+price/volume from the official tradingview.com chart — deeper intraday, extended hours, long
+history, and bulk pattern scanning — use [`tvsandbox`](./tvsandbox.md).
+:::
+
+## Prerequisites
+
+1. Start the bridge server: `traderbro brochart serve`
+2. Open your TraderBro chart page in a browser — the bridge connects automatically
+
+## Commands
+
+### serve
+
+Start the WebSocket bridge server.
+
+```bash
+traderbro brochart serve
+traderbro brochart serve --port 7892   # custom port (default 7891)
 ```
-traderbro analyze EXCHANGE:SYMBOL [flags]
+
+Keep this running in a dedicated terminal while using other `tv` commands.
+
+---
+
+### state
+
+Print the current chart state (symbol, resolution, studies, shapes).
+
+```bash
+traderbro brochart state
+traderbro brochart state --json
+traderbro brochart state --full --json   # includes complete layout blob
 ```
 
-## Description
+---
 
-`traderbro analyze` is the primary technical analysis command. It calls the TraderBro API to:
+### symbol
 
-1. Render a candlestick chart PNG with the requested indicators
-2. Scan the last N bars for TA-Lib candlestick patterns
-3. Detect structural chart patterns (bull flags, head & shoulders, etc.)
-4. Return a combined signals summary with a confluence score (0–10)
+Switch the active chart to a different symbol.
 
-The chart PNG is saved locally. **The absolute file path is printed to stdout** — an AI agent can read the image with its Read/image tool at that path.
+```bash
+traderbro brochart symbol NASDAQ:AAPL
+traderbro brochart symbol NASDAQ:NVDA 1D   # also set resolution
+traderbro brochart symbol NASDAQ:MSFT 1W
+```
 
-Human-readable summary (price, patterns, confluence) is printed to stderr.
+---
+
+### screenshot
+
+Capture the active chart as a PNG.
+
+```bash
+traderbro brochart close                              # dismiss panels first
+traderbro brochart screenshot -o /tmp/chart.png
+traderbro brochart screenshot                         # prints base64 to stdout
+```
+
+Always run `brochart close` before `brochart screenshot` to get a clean image.
+
+---
+
+### bars
+
+Fetch OHLCV bar data with authoritative UDF timestamps.
+
+```bash
+traderbro brochart bars                    # last 90 bars (default)
+traderbro brochart bars --last 300
+traderbro brochart bars --last 90 --json
+```
+
+Use `brochart bars` before any `brochart draw` command to get exact timestamps. Computed timestamps
+(e.g. from `date`) can be off by one bar around weekends and DST transitions.
+
+Returns OHLC + volume per bar. JSON shape:
+
+```json
+{
+  "symbol": "NASDAQ:AAPL",
+  "resolution": "D",
+  "count": 3,
+  "bars": [
+    { "date": "2026-05-12", "ts": 1778544000, "o": 291.98, "h": 294.9, "l": 290.23, "c": 294.27, "v": 56201555 }
+  ]
+}
+```
+
+---
+
+### draw
+
+Draw shapes and annotations on the chart.
+
+```bash
+# Horizontal level
+traderbro brochart draw hline 150
+traderbro brochart draw hline 150 --color '#ff9800' --style 1
+traderbro brochart draw hline 200 --label "Key Support"
+
+# Trend line (get timestamps from brochart bars first)
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212 --color '#ef5350' --width 2
+traderbro brochart draw line 2026-04-07 165 2026-05-09 212 --label "Uptrend"
+
+# Arrow marker
+traderbro brochart draw arrow up 2026-04-07 160
+traderbro brochart draw arrow down 2026-11-10 219
+
+# Text label
+traderbro brochart draw text 2026-04-27 221 "Bull Flag"
+
+# Rectangle
+traderbro brochart draw rect 2026-04-24 218 2026-05-09 197 --color '#26a69a' --transparency 85
+traderbro brochart draw rect 2026-04-24 218 2026-05-09 197 --label "Bull Flag"
+
+# Position tools
+traderbro brochart draw long 2026-05-01 198 2026-08-01 235 --stop 180
+traderbro brochart draw short 2026-05-01 198 2026-08-01 165 --stop 215
+
+# Manage shapes
+traderbro brochart draw list --json
+traderbro brochart draw clear
+```
+
+**Colour convention:**
+
+| Role | Hex |
+|---|---|
+| Bullish (support, long) | `#26a69a` |
+| Bearish (resistance, short) | `#ef5350` |
+| Neutral (necklines, levels) | `#ff9800` |
+| Momentum / oscillator | `#9c27b0` |
+| Moving averages | `#2196f3` |
+
+---
+
+### study
+
+Manage indicators on the chart.
+
+```bash
+traderbro brochart study list
+traderbro brochart study list --json
+traderbro brochart study add "Relative Strength Index"
+traderbro brochart study add "Bollinger Bands"
+traderbro brochart study add Volume --force        # add a duplicate explicitly
+traderbro brochart study remove <id>
+traderbro brochart study clear
+```
+
+Use the **full display name** (e.g. `"Relative Strength Index"`, not `RSI`).
+By default `brochart study add` short-circuits with a "study already on chart" note
+if a study with the same name is already present; pass `--force` to add a
+duplicate (e.g. two Moving Averages with different periods).
+
+#### study values
+
+Pull a time-aligned matrix of bars + every active study's computed output.
+This is the primary tool for numeric questions — "what's the current RSI?",
+"find the bar where MACD crossed signal", "is there an RSI divergence in
+the last 30 bars?" — anything that needs exact values rather than a visual.
+
+```bash
+traderbro brochart study values                    # last 60 bars, all studies on chart
+traderbro brochart study values --last 30 --json
+traderbro brochart study values --ids wPbb6S,yteGJ4 --last 10
+traderbro brochart study values --include-volume --last 60 --json
+traderbro brochart study values --json --jq '.bars[-1].studies'
+```
+
+**Flags:**
+
+| Flag | Default | Notes |
+|---|---|---|
+| `--last N` | `60` | Tail-slice to the most recent N bars. `0` returns all loaded bars. |
+| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `brochart study list`. |
+| `--include-volume` | off | Add the Volume study just for this call, then remove it. Convenience for "I want volume aligned without setup boilerplate." |
+| `--json` | off | Machine-readable output. |
+
+**Output shape (JSON):**
+
+```json
+{
+  "count": 60,
+  "bars": [
+    {
+      "date": "2026-05-12",
+      "ts":   1778506200,
+      "open": 291.98, "high": 294.9, "low": 290.23, "close": 294.27,
+      "volume": 56201555,
+      "studies": {
+        "Bollinger Bands (20, 2, 0, SMA)": { "Median": 264.29, "Upper": 291.16, "Lower": 237.43 },
+        "Relative Strength Index (14)":    { "Plot":   67.58 }
+      }
+    }
+  ],
+  "schema": [ /* original exportData schema, kept for power users */ ]
+}
+```
+
+The `studies` map uses the **full configured name** (with parameters) as
+the key, so the JSON is self-describing. To extract values robustly in
+`jq`, use `startswith` or `test`:
+
+```bash
+traderbro brochart study values --last 1 --json \
+  | jq '.bars[-1].studies | to_entries[] | select(.key|startswith("Bollinger")) | .value'
+```
+
+**Source:** values come from `widget.activeChart().exportData()` — the same
+series the chart itself paints, no second round-trip to the UDF API. The
+CLI waits for each study's `onDataLoaded` event before exporting, so a
+freshly-added study returns populated values on the first call.
+
+**Errors:** passing `--ids <unknown>` exits non-zero with
+`study ID(s) not on chart: …` rather than silently dropping the unknown ID.
+
+---
+
+### save / saved
+
+Save the current chart layout and list saved layouts.
+
+```bash
+traderbro brochart save
+traderbro brochart save "NVDA Failed H&S — May 2026"
+traderbro brochart saved
+traderbro brochart saved --json
+```
+
+---
+
+### range / zoom / timeframe
+
+Control the visible date range and zoom level.
+
+```bash
+# Exact date range
+traderbro brochart range 2024-01-01
+traderbro brochart range 2024-01-01 2025-01-01
+
+# Zoom
+traderbro brochart zoom in
+traderbro brochart zoom out
+traderbro brochart zoom reset
+traderbro brochart zoom 12
+
+# Preset timeframes
+traderbro brochart timeframe 6M
+traderbro brochart timeframe 1Y 1D   # also set resolution
+```
+
+---
+
+### search
+
+Search for symbols via the UDF datafeed.
+
+```bash
+traderbro brochart search TSLA
+traderbro brochart search Apple
+traderbro brochart search nvidia --exchange NASDAQ
+traderbro brochart search oil --type etf --json
+```
+
+---
+
+### close
+
+Close open panels and popups before a screenshot.
+
+```bash
+traderbro brochart close
+```
+
+---
+
+### charts / use
+
+List connected browser tabs and switch between them.
+
+```bash
+traderbro brochart charts
+traderbro brochart charts --json
+traderbro brochart use <id-prefix>
+```
+
+---
+
+### health
+
+Read-only diagnostic of the chart pipeline. Use at run start, between every K
+symbols in long loops, and after any error.
+
+```bash
+traderbro brochart health
+traderbro brochart health --json
+traderbro brochart health --quick                # skip slow udf_auth check
+traderbro brochart health --mem-threshold 400    # fail if heap > 400 MB
+```
+
+Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
+`udf_auth`, `memory_ok`. Exits 0 if all pass, non-zero otherwise. Composes
+with shell `||`:
+
+```bash
+traderbro brochart health || traderbro brochart refresh
+```
+
+Output (JSON):
+
+```json
+{
+  "ok": true,
+  "checks": [
+    {"name": "bridge_reachable", "ok": true},
+    {"name": "chart_connected",  "ok": true, "tab_id": "35088f7f-...", "symbol": "NASDAQ:AAPL"},
+    {"name": "widget_ready",     "ok": true, "symbol": "NASDAQ:AAPL"},
+    {"name": "udf_auth",         "ok": true, "latency_ms": 27},
+    {"name": "memory_ok",        "ok": true, "heap_mb": 56, "threshold_mb": 1500}
+  ]
+}
+```
+
+The `udf_auth` check classifies HTTP 401 as auth failure; non-401 errors
+(like "no bar data for foreign symbol") pass auth but include a hint in the
+error field.
+
+---
+
+### refresh
+
+Reload the browser tab and wait for the chart to reconnect. Use to reclaim
+memory or recover from stuck TV state (e.g. studies wedged after a
+resolution change).
+
+```bash
+traderbro brochart refresh
+traderbro brochart refresh --json
+traderbro brochart refresh --verify-with-bars    # also confirm UDF auth post-reload
+traderbro brochart refresh --timeout 30s         # extend reconnect ceiling
+```
+
+Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
+- Same tab UUID back in connected charts (sessionStorage persists).
+- `tvWidget.activeChart()` non-null (widget fully bootstrapped).
+
+**Does NOT fix:** expired localStorage tokens (page reloads with same
+expired token), backend issues, permanently missing symbol data.
+
+**Important:** after refresh, the chart restores whatever layout was last
+saved via `brochart save` — *not necessarily an empty chart, and not necessarily
+the symbol you were just analysing*. Always re-issue `brochart symbol X` after
+a refresh.
+
+---
+
+### eval
+
+Escape hatch for TradingView API calls not yet in a named command.
+
+```bash
+traderbro brochart eval "tvWidget.activeChart().symbol()"
+```
+
+If you use `eval` for the same operation more than once, that pattern belongs in
+`chart-bridge.js` as a named case. Use `tradingview-cli` for API discovery.
+
+---
+
+## Standard Annotation Workflow
+
+```bash
+# 1. Set chart
+traderbro brochart symbol NASDAQ:NVDA 1D
+
+# 2. Set visible range
+traderbro brochart range 2025-01-01
+
+# 3. See what's on the chart
+traderbro brochart close
+traderbro brochart screenshot -o /tmp/before.png
+
+# 4. Get authoritative timestamps for drawing
+traderbro brochart bars --last 90 --json
+
+# 5. Annotate
+traderbro brochart draw hline 850
+traderbro brochart draw arrow up 2025-03-15 780
+
+# 6. Verify
+traderbro brochart close
+traderbro brochart screenshot -o /tmp/annotated.png
+
+# 7. Save
+traderbro brochart save "NVDA support levels"
+```
+
+## Numeric Pattern-Detection Workflow
+
+For questions that need **exact indicator values** (not visual reading):
+
+```bash
+# 1. Set chart and studies you want to measure
+traderbro brochart symbol NASDAQ:AAPL
+traderbro brochart study add "Relative Strength Index"
+traderbro brochart study add "Bollinger Bands"
+
+# 2. Pull bars + study values time-aligned (one call)
+traderbro brochart study values --last 30 --include-volume --json > /tmp/data.json
+
+# 3. Run your numeric query against the time series with jq
+jq '
+  .bars
+  | map({date, close, rsi: (.studies | to_entries[] | select(.key|startswith("Relative")) | .value.Plot)})
+  | (max_by(.close)) as $pHi
+  | (max_by(.rsi // -1)) as $rHi
+  | "price-peak: \($pHi.date) close=\($pHi.close) rsi=\($pHi.rsi)\nrsi-peak:   \($rHi.date) rsi=\($rHi.rsi)\nbearish-div: \($pHi.date > $rHi.date)"
+' /tmp/data.json
+
+# 4. Annotate the bars you found, then screenshot
+traderbro brochart draw arrow down 2026-05-12 294.27
+traderbro brochart screenshot -o /tmp/annotated.png
+```
+
+Use this workflow for RSI divergence, MACD crossover detection, Bollinger
+squeeze identification, volume confirmation, and multi-indicator
+confluence. See the `tv-quant` skill (`traderbro skills read tv-quant`)
+for five worked patterns with verified output.
+
+## Long-Running Agent Loops
+
+For runs over many symbols (>20) or long unattended sessions, gate the loop
+with `brochart health` and recover with `brochart refresh`. The pattern:
+
+```bash
+# Pre-flight: health check, refresh if unhealthy, abort if still bad
+traderbro brochart health || {
+  traderbro brochart refresh
+  traderbro brochart health || exit 1
+}
+
+# Set studies ONCE — they survive symbol switches and recompute automatically
+traderbro brochart study add "Relative Strength Index"
+
+count=0
+for sym in $(cat symbols.txt); do
+  count=$((count + 1))
+
+  # Only if your loop draws shapes per symbol
+  # traderbro brochart draw clear
+
+  traderbro brochart symbol "$sym" || { echo "skip $sym"; continue; }
+  result=$(traderbro brochart study values --last 60 --json --jq '.bars[-1]')
+  echo "$sym: $result"
+
+  # Defensive refresh every 50 symbols
+  if (( count % 50 == 0 )); then
+    traderbro brochart refresh
+    traderbro brochart symbol "$sym"               # re-set; refresh restores saved layout
+    traderbro brochart study add "Relative Strength Index"   # re-add if not in saved layout
+  fi
+done
+```
+
+See the `tv-long-running` skill (`traderbro skills read tv-long-running`)
+for the full failure-mode → recovery decision table and memory budgeting
+guidance.
 
 ## Flags
 
 | Flag | Default | Description |
 |---|---|---|
-| `--period` | `6mo` | Chart lookback: `1mo`, `3mo`, `6mo`, `1y`, `2y` |
-| `--interval` | `1d` | Bar interval: `1d`, `1wk` |
-| `--indicators` | `sma_50,sma_200,rsi` | Comma-separated indicator keys |
-| `--lookback` | `10` | Candle pattern scan window (bars) |
-| `--no-candle-patterns` | off | Skip TA-Lib candlestick scan |
-| `--no-chart-patterns` | off | Skip structural pattern detection (faster) |
-| `--output-dir` | `~/.traderbro/charts` | Directory to save the PNG |
-| `--json` | off | Print raw JSON to stdout (no PNG saved) |
-
-### Available indicators
-
-`sma_20`, `sma_50`, `sma_200`, `ema_20`, `ema_50`, `bbands`, `rsi`, `macd`
-
-## Examples
-
-```bash
-# Quick analysis — defaults (6mo daily, SMA 50/200 + RSI)
-traderbro analyze DSE:ACI
-
-# 1-year chart with MACD
-traderbro analyze NASDAQ:AAPL --period 1y --indicators sma_50,sma_200,rsi,macd
-
-# Bollinger Bands instead of moving averages
-traderbro analyze DSE:ACI --indicators bbands,rsi
-
-# Skip structural pattern scan (faster response)
-traderbro analyze DSE:ACI --no-chart-patterns
-
-# Raw JSON — for piping or agent parsing
-traderbro analyze DSE:ACI --json
-
-# Save PNG to a custom directory
-traderbro analyze DSE:ACI --output-dir /tmp/charts
-```
-
-## Output (default mode)
-
-**stdout** — absolute path to the saved PNG (one line, no trailing whitespace):
-```
-/home/user/.traderbro/charts/ACI_DSE_1d_6mo_analyze_20260508-120000.png
-```
-
-**stderr** — human-readable summary:
-```
-ACI (DSE)  1d  6mo  |  Last: 49.50  +2.70%  |  126 bars
-Candle patterns (last 10 bars): 2 total  2 bullish  (most recent: Engulfing Pattern, 1d ago)
-Confluence: 7/10 — bullish
-Chart saved: /home/user/.traderbro/charts/ACI_DSE_1d_6mo_analyze_20260508-120000.png
-```
-
-## Output (--json mode)
-
-```json
-{
-  "symbol": "ACI",
-  "exchange": "DSE",
-  "chart": {
-    "image_b64": "<base64-png>",
-    "format": "png",
-    "period": "6mo",
-    "interval": "1d",
-    "indicators": ["sma_50", "sma_200", "rsi"],
-    "data_points": 126,
-    "date_range": { "from": "2025-11-08", "to": "2026-05-08" }
-  },
-  "price_summary": {
-    "latest_close": 49.5,
-    "open": 48.2,
-    "high": 50.1,
-    "low": 47.8,
-    "change_pct": 2.7
-  },
-  "candle_patterns": {
-    "lookback": 10,
-    "patterns_found": 2,
-    "scan_range": { "from": "2026-04-28", "to": "2026-05-08" },
-    "patterns": [
-      {
-        "pattern_id": "CDLENGULFING",
-        "name": "Engulfing Pattern",
-        "direction": "bullish",
-        "signal": 100,
-        "candles_span": 2,
-        "date": "2026-05-07",
-        "bars_ago": 1
-      }
-    ]
-  },
-  "chart_patterns": {
-    "patterns_found": 0,
-    "patterns": []
-  },
-  "signals": {
-    "dominant_direction": "bullish",
-    "candle_bias": "bullish",
-    "structure_bias": "neutral",
-    "confluence_score": 7,
-    "summary": "2 bullish candle patterns in last 10 bars (Engulfing 1 bar ago, Hammer 3 bars ago)."
-  },
-  "generated_at": "2026-05-08T12:00:00Z"
-}
-```
-
-### Key JSON fields
-
-| Field | What it tells you |
-|---|---|
-| `candle_patterns[*].bars_ago` | 0 = today, 1 = yesterday. Patterns ≤ 2 bars ago are most actionable |
-| `chart_patterns[*].status` | `"active"` = still in play; `"historical"` = already resolved |
-| `chart_patterns[*].target_price` | Pattern's measured price target |
-| `chart_patterns[*].stop_price` | Suggested invalidation level |
-| `signals.confluence_score` | 0–10. ≥ 7 = high conviction. ≤ 3 = mixed or no signal |
-| `signals.dominant_direction` | Overall bias: `"bullish"`, `"bearish"`, or `"neutral"` |
-| `signals.summary` | Plain-English summary — read this first |
-
-## Exit codes
-
-| Code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | General error (invalid flags, etc.) |
-| 2 | Auth failure — check your API key |
-| 3 | Symbol not found or insufficient price history |
-| 6 | Quota exceeded |
-
-## See also
-
-- [`traderbro patterns candles`](patterns.md) — candlestick scan only, no chart
-- [`traderbro symbol search`](symbol.md) — find the right EXCHANGE:SYMBOL identifier
+| `--port` | `7891` | Bridge server port |
+| `--json` | false | Output as JSON |
+| `--no-color` | false | Disable colored output |
 # calculated-events
 
 Query the persisted history of technical events detected on a symbol's price history.
@@ -1098,118 +1438,6 @@ These flags apply to every command.
 # Get just the slugs of the top 10 analysts
 traderbro analyst list --limit 10 --jq '.results[].slug'
 ```
-# traderbro patterns
-
-Pattern detection sub-commands.
-
-## Sub-commands
-
-| Sub-command | Description |
-|---|---|
-| [`patterns candles`](#candles) | Scan for TA-Lib candlestick patterns in recent bars |
-
----
-
-## patterns candles
-
-Scan the last N bars of a symbol's daily price history for candlestick patterns using TA-Lib.
-
-### Usage
-
-```
-traderbro patterns candles EXCHANGE:SYMBOL [flags]
-```
-
-### Flags
-
-| Flag | Default | Description |
-|---|---|---|
-| `--lookback` | `10` | Number of recent bars to scan |
-| `--json` | off | Print raw JSON output |
-
-### Examples
-
-```bash
-# Last 10 bars (default)
-traderbro patterns candles DSE:ACI
-
-# Extend the scan window to 20 bars
-traderbro patterns candles NASDAQ:TSLA --lookback 20
-
-# JSON for parsing or piping
-traderbro patterns candles DSE:ACI --lookback 14 --json
-```
-
-### Output (default mode)
-
-```
-ACI (DSE) — Candlestick Patterns (last 10 bars)
-
-  Pattern                    Direction  Date          Bars Ago  Signal
-  ───────────────────────────────────────────────────────────────────
-  Engulfing Pattern          bullish    2026-05-07    1         100
-  Hammer                     bullish    2026-05-05    3         100
-
-2 pattern(s) found.
-```
-
-### Output (--json mode)
-
-```json
-{
-  "symbol": "ACI",
-  "exchange": "DSE",
-  "patterns_found": 2,
-  "lookback": 10,
-  "scan_range": { "from": "2026-04-28", "to": "2026-05-08" },
-  "patterns": [
-    {
-      "pattern_id": "CDLENGULFING",
-      "name": "Engulfing Pattern",
-      "direction": "bullish",
-      "signal": 100,
-      "candles_span": 2,
-      "date": "2026-05-07",
-      "bars_ago": 1
-    },
-    {
-      "pattern_id": "CDLHAMMER",
-      "name": "Hammer",
-      "direction": "bullish",
-      "signal": 100,
-      "candles_span": 1,
-      "date": "2026-05-05",
-      "bars_ago": 3
-    }
-  ]
-}
-```
-
-### Field reference
-
-| Field | Description |
-|---|---|
-| `pattern_id` | TA-Lib function name (e.g. `CDLENGULFING`) |
-| `name` | Human-readable pattern name |
-| `direction` | `"bullish"` or `"bearish"` |
-| `signal` | TA-Lib raw signal value: 100 (bullish), −100 (bearish), 200 (strong bullish), −200 (strong bearish) |
-| `candles_span` | How many bars the pattern spans (e.g. 2 for Engulfing) |
-| `date` | Date the pattern completed (YYYY-MM-DD) |
-| `bars_ago` | 0 = today, 1 = yesterday. Patterns ≤ 2 bars ago carry the most weight |
-
-### Exit codes
-
-| Code | Meaning |
-|---|---|
-| 0 | Success |
-| 2 | Auth failure |
-| 3 | Symbol not found or insufficient price history (< 30 bars) |
-| 6 | Quota exceeded |
-
-## See also
-
-- [`traderbro analyze`](analyze.md) — full analysis: chart + patterns + signals in one call
-- [`traderbro symbol search`](symbol.md) — find the right EXCHANGE:SYMBOL identifier
 ---
 sidebar_position: 3
 title: prediction
@@ -1240,6 +1468,8 @@ traderbro prediction list [flags]
 | `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
 | `--since` | string | — | Predictions published on or after (YYYY-MM-DD) |
 | `--until` | string | — | Predictions published on or before (YYYY-MM-DD) |
+| `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` (combine with `--symbol`) |
+| `--tz` | string | — | Render `published_at` in this IANA zone, e.g. `America/New_York`, `Asia/Dhaka` (default: UTC) |
 | `--correct` | string | — | Filter by correctness: `true` or `false` |
 | `--sort` | string | `date` | Sort by: `date`, `return`, `confidence` |
 
@@ -1251,6 +1481,9 @@ traderbro prediction list --symbol NVDA --json
 
 # Bullish calls since January 2025
 traderbro prediction list --direction bullish --since 2025-01-01 --json
+
+# NVDA prints in the last 4 hours (intraday, market time)
+traderbro prediction list --symbol NVDA --window 4h --json
 
 # Predictions by a specific analyst on TSLA
 traderbro prediction list --analyst noLimitGains --symbol TSLA --json
@@ -1608,9 +1841,19 @@ Commands for screening stocks using the live DataMatrix snapshot — a Redis-cac
 
 ## traderbro screener schema
 
-List all filterable fields with their types, categories, and descriptions.
+Discover filterable fields via a **retrieval funnel** — the screener exposes 300+
+fields, so `schema` never dumps the full catalog by default. Instead it gives you a
+small group index, lets you search by concept, and returns full detail only for the
+keys you ask about.
 
-No authentication required — use this to discover available filter keys before running a screen.
+No authentication required — use this to discover filter keys before running a screen.
+
+**Recommended workflow:**
+1. `screener schema` → see the field groups + a curated core set.
+2. Have an intent ("oversold cheap tech")? → `screener schema --search "oversold cheap"`.
+3. Browse a domain? → `screener schema --group valuation`.
+4. Before writing filters → `screener schema --fields rsi,pe_ratio` for exact operators / timeframes / values.
+5. Build: `screener run --filter "<key>:<op>:<value>"` (add `@<tf>` for a non-default timeframe).
 
 ### Usage
 
@@ -1620,61 +1863,112 @@ traderbro screener schema [flags]
 
 ### Flags
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--category` | string | — | Narrow to one category: `valuation`, `growth`, `performance`, `price`, `profitability`, `financials`, `balance_sheet`, `dividends`, `risk`, `price_levels`, `metadata` |
-| `--json` | bool | false | Output as JSON |
-| `--plain` | bool | false | Tab-delimited output |
-| `--jq` | string | — | Apply jq expression to JSON output |
+| Flag | Short | Type | Default | Description |
+|---|---|---|---|---|
+| `--search` | `-s` | string | — | Concept/synonym search → ranked matching fields |
+| `--group` | `-g` | string | — | All fields in one category (e.g. `technical`, `valuation`, `ownership`) |
+| `--fields` | `-f` | csv | — | Full detail for specific keys: `rsi,in_index,revenue` |
+| `--all` | | bool | false | Dump every field, paginated (discouraged for agents — large) |
+| `--flat` | | bool | false | Legacy flat array with live stats (backward compat) |
+| `--source` | | string | `all` | Filter by source: `stockanalysis` \| `tradingview` \| `all` |
+| `--limit` | `-n` | int | 20 | Cap results (search / group / dump) |
+| `--category` | | string | — | *(legacy)* Filter the flat array by category |
+| `--json` | | bool | false | Output as JSON (full mode-aware envelope) |
+| `--jq` | | string | — | Apply jq expression to JSON output |
+
+With no mode flag, `schema` returns the **group index** plus a curated `core` set.
+
+### Modifiers (`@`)
+
+Some fields are one logical concept across many timeframes/periods (`type` carries a
+`modifier`). Apply a modifier in `screener run` with an `@` suffix; omit it for the default.
+
+| Axis | Applies to | Values | Default | Example |
+|---|---|---|---|---|
+| `timeframe` | technicals (`rsi`, `ma50`, `atr`, `relative_volume`) | `1D 1W 1M` (+ intraday `60 240` live via TradingView) | `1D` | `rsi@1W:lt:30` |
+| `window` | returns | `1w 1m 3m 6m ytd 1y 3y 5y 10y 20y` | `1y` | `price_change@3m:gt:20` |
+| `period` | fundamentals (`revenue`, `net_income`) | `ttm fy fq` | `ttm` | `revenue@fq:gt:250M` |
 
 ### Examples
 
 ```bash
-# All fields (table)
+# Group index + core fields
 traderbro screener schema
 
-# Only valuation fields
-traderbro screener schema --category valuation
+# Search by concept (synonyms work: oversold→rsi, cheap→pe_ratio, squeeze→short_float)
+traderbro screener schema --search "oversold cheap large cap"
+traderbro screener schema --search "short squeeze"
+traderbro screener schema --search "index membership s&p 500"
 
-# Growth fields as JSON — pipe to jq for just the keys
-traderbro screener schema --category growth --json | jq '[.fields[].key]'
+# Browse one domain
+traderbro screener schema --group technical
+
+# Exact syntax for the keys you'll filter on
+traderbro screener schema --fields rsi,in_index,revenue --json
+
+# Only TradingView-sourced ETF fields
+traderbro screener schema --source tradingview --group etf
 ```
 
-### Output (Table mode)
+Schema tables (search / detail / group) include a **Source** column: `snapshot`
+(served locally from the matrix, fast) vs `live(TV)` (a TradingView passthrough field
+fetched live via federation — see the Federation section). Each result's `source`
+(`stockanalysis` | `tradingview`) is also in the JSON.
 
-```
-Key                  Type         Category     Label
-────────────────────────────────────────────────────────────────
-market_cap           numeric      valuation    Market Cap
-pe_ratio             numeric      valuation    P/E Ratio
-revenue_growth       numeric      growth       Revenue Growth %
-ch1y                 numeric      performance  1-Year Change %
-sector               categorical  metadata     Sector
-```
-
-### Output (JSON mode)
+### Output (search, JSON)
 
 ```json
 {
-  "fields": [
-    {
-      "key": "market_cap",
-      "label": "Market Cap",
-      "description": "Total market capitalisation (USD)",
-      "type": "numeric",
-      "category": "valuation"
-    }
+  "mode": "search",
+  "query": "oversold cheap",
+  "count": 4,
+  "results": [
+    { "key": "rsi", "type": "number", "operators": ["gt","lt","gte","lte","between"],
+      "matched": ["oversold"], "score": 0.96,
+      "modifier": {"axis":"timeframe","values":["1D","1W","1M"],"default":"1D"},
+      "example": "rsi:lt:30" },
+    { "key": "pe_ratio", "type": "number", "matched": ["cheap"], "score": 0.78,
+      "example": "pe_ratio:lt:15" }
   ]
 }
 ```
 
-### Field types
+### Output (detail, JSON)
 
-| Type | Operators available |
-|---|---|
-| `numeric` | `gt`, `lt`, `gte`, `lte`, `between` |
-| `categorical` | `eq`, `neq`, `in` |
-| `date` | `gt`, `lt`, `gte`, `lte` |
+```json
+{
+  "mode": "detail",
+  "fields": [
+    { "key": "in_index", "label": "Index Membership", "category": "identifier",
+      "type": "set", "operators": ["has","in"], "narrowing": true,
+      "values": ["SP500","NDX","DJI","R2000"], "example": "in_index:has:SP500" }
+  ],
+  "unknown": []
+}
+```
+
+Unknown keys in `--fields` are returned in `unknown` (with `did_you_mean`) rather than
+erroring — partial input never hard-fails.
+
+### Field types → operators
+
+`type` is authoritative and derives the valid operators.
+
+| Type | Operators | Notes |
+|---|---|---|
+| `number` / `price` / `currency` / `percent` | `gt lt gte lte between` | `currency` accepts `K/M/B/T` suffixes |
+| `date` | `gt lt gte lte between` | `YYYY-MM-DD` |
+| `categorical` | `eq neq in` | `sector`, `country`, `exchange` |
+| `text` | `eq neq in match` | `name` (`match` = substring) |
+| `set` | `has in` | array fields: `in_index` |
+| `bool` | `eq` | `is_primary_listing`, `optionable` |
+
+### Narrowing fields (lead with these)
+
+Fields flagged `narrowing: true` (`in_index`, `exchange`, `country`, `sector`,
+`industry`, `is_primary_listing`) are cheap and highly selective. Apply them **first** —
+`in_index:has:SP500` cuts the universe to ~500 rows before numeric filters and before
+piping into `calculated-events`, which pays a per-symbol cost.
 
 ---
 
@@ -1804,6 +2098,7 @@ traderbro screener run [flags]
 | `--filter` | string | — | Filter expression: `key:op:value`. Repeatable. |
 | `--sort` | string | `market_cap:desc` | Sort field and direction: `key:asc` or `key:desc` |
 | `--limit` | int | `50` | Max results (server cap: 500) |
+| `-c, --columns` | string | — | Comma-separated fields to return (e.g. `symbol,rsi,pe_ratio`). Omit → compact default set; `all` → every field. |
 | `--symbols-only` | bool | false | Output symbol list only — clean for piping |
 | `--json` | bool | false | Output as JSON |
 | `--plain` | bool | false | Tab-delimited output |
@@ -1822,6 +2117,109 @@ traderbro screener run [flags]
 | `neq` | not equal | `sector:neq:Energy` |
 | `between` | inclusive range | `pe_ratio:between:10,30` |
 | `in` | in list | `sector:in:Technology,Healthcare` |
+| `has` | set membership (array fields) | `in_index:has:SP500` |
+| `match` | substring (text fields) | `name:match:capital` |
+
+Operators are validated against the field's `type` (see `schema`). Using an
+invalid operator returns `400` with the valid set — e.g. `sector:gt:5` →
+`op 'gt' invalid for type 'categorical'`.
+
+A non-default timeframe/period/window is applied with an `@` suffix on the key:
+`rsi@1W:lt:30`, `revenue@fq:gt:250M`. Invalid modifiers return `400` with the
+allowed values.
+
+### Field-vs-field comparison (`@column`)
+
+A filter value can reference **another column** instead of a constant — prefix it
+with `@`. The comparison runs server-side over the **whole universe** (not just the
+returned page), so `total` is the true count.
+
+```bash
+# uptrend regime: 50-day MA above the 200-day MA
+traderbro screener run --filter "ma50:gt:@ma200" --columns symbol,ma50,ma200
+
+# within 5% of the 52-week high (scale the RHS)
+traderbro screener run --filter "close:gte:@high52*0.95"
+
+# cheaper than its sector
+traderbro screener run --filter "pe_ratio:lt:@sector_pe"
+
+# bullish MACD (both operands are live TradingView fields)
+traderbro screener run --filter "market_cap:gt:200B" --filter "MACD.macd:gt:@MACD.signal"
+```
+
+- **Operand grammar:** `@field`, `@field*k` / `@field/k` (scale), `@field+c` / `@field-c`
+  (offset), combinable as `@field*k+c`. The field may itself carry a timeframe
+  modifier (`@rsi@1W`).
+- **Operators:** `gt`, `lt`, `gte`, `lte` only (float equality / ranges / text don't
+  apply column-to-column). Other ops return `400`.
+- **Both operands must be numeric**; an unknown or non-numeric RHS returns `400`
+  (with `did_you_mean`).
+- **AND-only / binary:** comparisons are ordinary `--filter` entries, ANDed with the
+  rest. Each is binary — write `a < b < c` as two filters (`a:lt:@b` + `b:lt:@c`).
+- **Federated operands:** if either operand is a live TradingView field, the
+  comparison runs *after* probing TV and **cannot narrow the probe set** — pair it
+  with a selective stored filter (`market_cap`, `sector`, `in_index`) or it returns
+  `federation: needs_narrowing` (see Federation below).
+
+### Response fields
+
+Run responses include `total` (full match count before the `--limit` slice) and
+`has_more` (whether more rows exist beyond what was returned), so an agent can size
+the universe without paging. The `columns` field echoes the projection that was
+applied (`null` when the full row was returned via `--columns all`).
+
+#### Federation (live TradingView passthrough)
+
+When a screen touches a **federated** field (live TradingView data, e.g. `aum`,
+`expense_ratio`), the response also carries:
+
+| Field | Meaning |
+|---|---|
+| `federation` | `live` (all probed symbols resolved) · `partial` (some symbols couldn't be mapped to TradingView) · `unresolved` (none could be mapped — live side empty) · `unavailable` (federation disabled) · `needs_narrowing` (stored filter not selective enough to probe) |
+| `federation_unresolved` | `{count, reason, sample}` — symbols excluded from the live side because they have **no TradingView symbol mapping**. In table mode this prints to stderr as `live data unavailable for N symbol(s) (no TradingView mapping)`. |
+
+`unresolved` symbols are **never** silently dropped or shown as a null value: a row
+that matched the stored filters still appears (its federated column simply omitted),
+and a federated *filter* never treats an unmapped symbol as "failed the filter" — it
+is reported in `federation_unresolved` instead. Coverage is broad for US, Japan,
+China, Korea, Hong Kong, Saudi, Canada, UK-primary and NSE-India; some markets
+(e.g. BSE numeric scrips, LSE foreign secondaries) may be unresolved.
+
+#### All TradingView fields are queryable
+
+Every screenable TradingView field (~700) is a queryable federated field, referenced
+by its **raw TV column name** (e.g. `return_on_equity_fq`, `price_earnings_ttm`,
+`total_revenue_ttm`). Discover them with `screener schema --search "<concept>"` — TV
+fields are tagged `source: tradingview` (vs `snapshot` for local matrix fields). A
+field with `freshness: live` in the response was served live from TradingView. These
+fetch live (so they need `SCREENER_FEDERATION_ENABLED`) and only for symbols that
+crosswalk to TV's namespace (others appear in `federation_unresolved`).
+
+```bash
+screener schema --search "return on equity"          # find TV field names
+screener run --filter "return_on_equity_fq:gt:20" \  # query bare, routes live
+  --filter "market_cap:gt:1B" --columns symbol,return_on_equity_fq
+```
+
+### Selecting columns
+
+The DataMatrix is ~300 fields wide. **Always name the columns you need** with
+`--columns` — it makes responses faster, smaller, and focused on the question:
+
+```bash
+# return only the fields the question is about
+traderbro screener run --filter "rsi:lt:30" --columns symbol,rsi,close_price,sector
+
+# the full ~300-field row (rare — exports / inspection)
+traderbro screener run --filter "market_cap:gt:50B" --columns all
+```
+
+If you omit `--columns`, the server projects to a **compact default set**
+(`symbol, name, sector, close_price, market_cap, change, ch1y, pe_ratio, rsi,
+dividend_yield, volume`). An unknown column returns `400` with `did_you_mean` —
+discover keys with `screener schema --search <concept>`. In table/plain output
+the displayed columns follow whatever you requested.
 
 ### Value suffixes
 
@@ -2111,14 +2509,25 @@ traderbro symbol trending [flags]
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--since` | string | `all` | Time window: `3d`, `7d`, `15d`, `1m`, `3m`, `1y`, `all` |
+| `--since` | string | `all` | Time window: `4h`, `24h`, `1d`, `3d`, `7d`, `15d`, `30d`, `1m`, `3m`, `1y`, `all` |
 | `--exchange` | string | — | Filter by exchange (e.g. `NASDAQ`, `NYSE`) |
 | `--sector` | string | — | Filter by sector (e.g. `Technology`, `Healthcare`) |
-| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `bullish`, `bearish` |
+| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `volume`, `bullish`, `bearish`, `skew`, `change` |
+| `--min-predictions` | int | `0` | Drop symbols with fewer than N predictions in the window |
+| `--summary` | bool | `false` | Window aggregates only (totals, ratio, unique symbols/analysts) — for live-tape posts |
+| `--tz` | string | — | Render timestamps in this IANA zone (default: each symbol's exchange / market time) |
+
+`--sort skew` ranks by `bull_bear_ratio`; `--sort change` ranks by `pct_change_vs_prior_window` (prediction volume vs the immediately-prior equal-length window — momentum). Both require a bounded `--since`. Each result includes `bull_bear_ratio` and `pct_change_vs_prior_window`. `latest_prediction_at` is ISO 8601 in **market time = the symbol's exchange timezone** (US → `-04:00/-05:00`, DSE → `+06:00`, Tadawul → `+03:00`); pass `--tz America/New_York` (or any IANA zone) to force one zone for the whole response. In `--summary` mode timestamps use `--tz` or UTC (aggregates span many exchanges).
 
 ### Examples
 
 ```bash
+# Most-covered symbols in the last 4 hours (intraday)
+traderbro symbol trending --since 4h
+
+# Most-covered symbols in the last 24 hours
+traderbro symbol trending --since 24h
+
 # Most-covered symbols in the last 7 days
 traderbro symbol trending --since 7d
 
@@ -2127,6 +2536,15 @@ traderbro symbol trending --since 1m --exchange NASDAQ --sort bullish
 
 # Technology sector, all time, JSON
 traderbro symbol trending --sector Technology --json
+
+# What's SURGING in attention right now (momentum), min 3 prints
+traderbro symbol trending --since 24h --sort change --min-predictions 3 --json
+
+# Most one-sided (bull/bear skew) this week
+traderbro symbol trending --since 7d --sort skew --json
+
+# Aggregate tape summary for a live post (no per-symbol breakdown)
+traderbro symbol trending --since 24h --summary --json
 
 # Pipe to jq
 traderbro symbol trending --since 7d --json | jq '.results[:5] | .[].ticker'
@@ -2171,541 +2589,322 @@ When `list_limit_reached` is `true`, results are capped by your plan. The CLI pr
 | `4` | Validation error (e.g. missing exchange prefix) |
 | `5` | Network error |
 ---
-title: tv
-sidebar_label: tv
+title: tvsandbox
+sidebar_label: tvsandbox
 ---
 
-# traderbro tv
+# traderbro tvsandbox
 
-Control a TradingView chart from the CLI via a local WebSocket bridge.
+Drive the **official `tradingview.com/chart`** from the CLI over the Chrome DevTools Protocol,
+using a dedicated, app-owned Chrome instance on the consumer's local machine (never your daily
+browser). The CLI launches and reuses that Chrome; you sign in once and the session persists.
+
+This is the high-fidelity price/volume path: deeper intraday resolutions, longer history, more
+realtime data, **extended-hours** bars, and the throughput to loop thousands of symbols for
+visual review.
+
+:::tip Which chart command?
+Use **`tvsandbox`** for raw market-data fidelity and bulk scanning from tradingview.com. For
+TraderBro's proprietary overlays (analyst marks, calculated events, predictions) on the
+traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
+:::
+
+## How it works
+
+- A dedicated Chrome is launched on its own debug port (**default 9333**, deliberately *not*
+  9222) with a persistent profile at `~/.traderbro/chrome-profile`, bound to `127.0.0.1` only.
+- Login is detected from TradingView's own `window.user` (a real numeric user id), not the
+  `sessionid` cookie. Sign in once with `tvsandbox login`; every later run reuses the session.
+- Data commands (`bars`, `snap`, `screenshot`, `metrics`, `sweep`, and `draw --symbol`) require
+  a signed-in session — guests cannot load arbitrary per-symbol data. `screen` is the exception:
+  it calls TradingView's public scanner API directly over HTTP, with no browser and no login.
+- **No pattern detector.** tvsandbox does not detect chart patterns — the agent judges
+  bull/bear/continuation from the bars + screenshot, and server-side detection lives in
+  [`calculated-events`](./calculated-events.md). tvsandbox *draws* any native shape you anchor.
+- **One shared Chrome — run commands sequentially**, never concurrently.
 
 ## Prerequisites
 
-1. Start the bridge server: `traderbro tv serve`
-2. Open your TraderBro chart page in a browser — the bridge connects automatically
+```bash
+traderbro tvsandbox login     # opens the dedicated Chrome; sign into TradingView once
+traderbro tvsandbox whoami    # confirm: "signed in as <user>"
+```
+
+## Global flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--cdp-port` | `9333` | CDP debug port for the dedicated Chrome |
+| `--profile` | `~/.traderbro/chrome-profile` | Chrome profile directory |
+| `--tab` | (empty) | Address a specific tab by its target id (from `tvsandbox open`) — for per-subagent/parallel use. Empty = the shared default tab. |
+| `--max-tabs` | `2` | Cap on CLI-owned tabs `open` will create. Default matches the TradingView Basic connection limit (Premium = 50). Env: `TVSANDBOX_MAX_TABS` |
+| `--json` | `false` | Output as JSON |
+
+## Parallel tabs & the TradingView connection limit
+
+Each agent or conversation thread can own its **own tab** so concurrent work doesn't
+collide on one shared chart:
+
+```bash
+id=$(traderbro tvsandbox open)            # create a tab, print its target id
+traderbro tvsandbox bars NVDA --tab "$id"
+traderbro tvsandbox snap NVDA --tab "$id" --out nvda.png
+traderbro tvsandbox close --tab "$id"     # close it when done
+```
+
+- **Within one tab:** strictly sequential (never two commands against the same tab at once).
+- **Across tabs:** parallel is fine — but only up to the **TradingView plan's
+  simultaneous-connection cap: Basic = 2, Premium = 50**. Each live data tab is one
+  connection (the shared default tab counts too).
+- Exceeding the cap makes TradingView close the connection (*"We've closed this
+  connection"*) and data stops loading. **Recover:**
+
+  ```bash
+  traderbro tvsandbox close --all          # free connections (or --stale 10m)
+  traderbro tvsandbox eval "(()=>{const b=[...document.querySelectorAll('button')].find(x=>/restore connection/i.test(x.textContent||''));if(b){b.click();return 'restored';}return 'no-modal';})()"
+  traderbro tvsandbox bars NASDAQ:AAPL     # confirm data loads again
+  ```
+
+On Basic, run parallel subagents in **waves of ≤2** and close the shared/default tab
+during parallel work.
 
 ## Commands
 
-### serve
+### login
 
-Start the WebSocket bridge server.
-
-```bash
-traderbro tv serve
-traderbro tv serve --port 7892   # custom port (default 7891)
-```
-
-Keep this running in a dedicated terminal while using other `tv` commands.
-
----
-
-### state
-
-Print the current chart state (symbol, resolution, studies, shapes).
+Launch/reuse the dedicated Chrome and wait while you sign into TradingView in that window. The
+login is stored in the persistent profile, so you only do this once.
 
 ```bash
-traderbro tv state
-traderbro tv state --json
-traderbro tv state --full --json   # includes complete layout blob
+traderbro tvsandbox login
 ```
 
 ---
 
-### symbol
+### whoami
 
-Switch the active chart to a different symbol.
+Report whether the dedicated Chrome holds a logged-in TradingView session.
 
 ```bash
-traderbro tv symbol NASDAQ:AAPL
-traderbro tv symbol NASDAQ:NVDA 1D   # also set resolution
-traderbro tv symbol NASDAQ:MSFT 1W
+traderbro tvsandbox whoami --json
+# { "loggedIn": true, "username": "...", "port": 9333 }
 ```
 
 ---
 
-### screenshot
+### open
 
-Capture the active chart as a PNG.
-
-```bash
-traderbro tv close                              # dismiss panels first
-traderbro tv screenshot -o /tmp/chart.png
-traderbro tv screenshot                         # prints base64 to stdout
-```
-
-Always run `tv close` before `tv screenshot` to get a clean image.
-
----
-
-### bars
-
-Fetch OHLCV bar data with authoritative UDF timestamps.
+Create a new logged-in TradingView tab and print its target id (the ownership token
+for `--tab`). Use one tab per agent/thread. Respects `--max-tabs`.
 
 ```bash
-traderbro tv bars                    # last 90 bars (default)
-traderbro tv bars --last 300
-traderbro tv bars --last 90 --json
-```
-
-Use `tv bars` before any `tv draw` command to get exact timestamps. Computed timestamps
-(e.g. from `date`) can be off by one bar around weekends and DST transitions.
-
-Returns OHLC + volume per bar. JSON shape:
-
-```json
-{
-  "symbol": "NASDAQ:AAPL",
-  "resolution": "D",
-  "count": 3,
-  "bars": [
-    { "date": "2026-05-12", "ts": 1778544000, "o": 291.98, "h": 294.9, "l": 290.23, "c": 294.27, "v": 56201555 }
-  ]
-}
-```
-
----
-
-### draw
-
-Draw shapes and annotations on the chart.
-
-```bash
-# Horizontal level
-traderbro tv draw hline 150
-traderbro tv draw hline 150 --color '#ff9800' --style 1
-traderbro tv draw hline 200 --label "Key Support"
-
-# Trend line (get timestamps from tv bars first)
-traderbro tv draw line 2026-04-07 165 2026-05-09 212
-traderbro tv draw line 2026-04-07 165 2026-05-09 212 --color '#ef5350' --width 2
-traderbro tv draw line 2026-04-07 165 2026-05-09 212 --label "Uptrend"
-
-# Arrow marker
-traderbro tv draw arrow up 2026-04-07 160
-traderbro tv draw arrow down 2026-11-10 219
-
-# Text label
-traderbro tv draw text 2026-04-27 221 "Bull Flag"
-
-# Rectangle
-traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --color '#26a69a' --transparency 85
-traderbro tv draw rect 2026-04-24 218 2026-05-09 197 --label "Bull Flag"
-
-# Position tools
-traderbro tv draw long 2026-05-01 198 2026-08-01 235 --stop 180
-traderbro tv draw short 2026-05-01 198 2026-08-01 165 --stop 215
-
-# Manage shapes
-traderbro tv draw list --json
-traderbro tv draw clear
-```
-
-**Colour convention:**
-
-| Role | Hex |
-|---|---|
-| Bullish (support, long) | `#26a69a` |
-| Bearish (resistance, short) | `#ef5350` |
-| Neutral (necklines, levels) | `#ff9800` |
-| Momentum / oscillator | `#9c27b0` |
-| Moving averages | `#2196f3` |
-
----
-
-### study
-
-Manage indicators on the chart.
-
-```bash
-traderbro tv study list
-traderbro tv study list --json
-traderbro tv study add "Relative Strength Index"
-traderbro tv study add "Bollinger Bands"
-traderbro tv study add Volume --force        # add a duplicate explicitly
-traderbro tv study remove <id>
-traderbro tv study clear
-```
-
-Use the **full display name** (e.g. `"Relative Strength Index"`, not `RSI`).
-By default `tv study add` short-circuits with a "study already on chart" note
-if a study with the same name is already present; pass `--force` to add a
-duplicate (e.g. two Moving Averages with different periods).
-
-#### study values
-
-Pull a time-aligned matrix of bars + every active study's computed output.
-This is the primary tool for numeric questions — "what's the current RSI?",
-"find the bar where MACD crossed signal", "is there an RSI divergence in
-the last 30 bars?" — anything that needs exact values rather than a visual.
-
-```bash
-traderbro tv study values                    # last 60 bars, all studies on chart
-traderbro tv study values --last 30 --json
-traderbro tv study values --ids wPbb6S,yteGJ4 --last 10
-traderbro tv study values --include-volume --last 60 --json
-traderbro tv study values --json --jq '.bars[-1].studies'
-```
-
-**Flags:**
-
-| Flag | Default | Notes |
-|---|---|---|
-| `--last N` | `60` | Tail-slice to the most recent N bars. `0` returns all loaded bars. |
-| `--ids <id1,id2>` | (all) | Comma-separated study IDs from `tv study list`. |
-| `--include-volume` | off | Add the Volume study just for this call, then remove it. Convenience for "I want volume aligned without setup boilerplate." |
-| `--json` | off | Machine-readable output. |
-
-**Output shape (JSON):**
-
-```json
-{
-  "count": 60,
-  "bars": [
-    {
-      "date": "2026-05-12",
-      "ts":   1778506200,
-      "open": 291.98, "high": 294.9, "low": 290.23, "close": 294.27,
-      "volume": 56201555,
-      "studies": {
-        "Bollinger Bands (20, 2, 0, SMA)": { "Median": 264.29, "Upper": 291.16, "Lower": 237.43 },
-        "Relative Strength Index (14)":    { "Plot":   67.58 }
-      }
-    }
-  ],
-  "schema": [ /* original exportData schema, kept for power users */ ]
-}
-```
-
-The `studies` map uses the **full configured name** (with parameters) as
-the key, so the JSON is self-describing. To extract values robustly in
-`jq`, use `startswith` or `test`:
-
-```bash
-traderbro tv study values --last 1 --json \
-  | jq '.bars[-1].studies | to_entries[] | select(.key|startswith("Bollinger")) | .value'
-```
-
-**Source:** values come from `widget.activeChart().exportData()` — the same
-series the chart itself paints, no second round-trip to the UDF API. The
-CLI waits for each study's `onDataLoaded` event before exporting, so a
-freshly-added study returns populated values on the first call.
-
-**Errors:** passing `--ids <unknown>` exits non-zero with
-`study ID(s) not on chart: …` rather than silently dropping the unknown ID.
-
----
-
-### save / saved
-
-Save the current chart layout and list saved layouts.
-
-```bash
-traderbro tv save
-traderbro tv save "NVDA Failed H&S — May 2026"
-traderbro tv saved
-traderbro tv saved --json
-```
-
----
-
-### range / zoom / timeframe
-
-Control the visible date range and zoom level.
-
-```bash
-# Exact date range
-traderbro tv range 2024-01-01
-traderbro tv range 2024-01-01 2025-01-01
-
-# Zoom
-traderbro tv zoom in
-traderbro tv zoom out
-traderbro tv zoom reset
-traderbro tv zoom 12
-
-# Preset timeframes
-traderbro tv timeframe 6M
-traderbro tv timeframe 1Y 1D   # also set resolution
-```
-
----
-
-### search
-
-Search for symbols via the UDF datafeed.
-
-```bash
-traderbro tv search TSLA
-traderbro tv search Apple
-traderbro tv search nvidia --exchange NASDAQ
-traderbro tv search oil --type etf --json
+id=$(traderbro tvsandbox open)
+traderbro tvsandbox open --json   # { "tab": "<id>", "port": 9333 }
 ```
 
 ---
 
 ### close
 
-Close open panels and popups before a screenshot.
+Close a tab opened by `open`, or reap leftovers.
 
 ```bash
-traderbro tv close
+traderbro tvsandbox close --tab <id>     # close your tab
+traderbro tvsandbox close --all          # close all CLI-owned tabs
+traderbro tvsandbox close --stale 10m    # reap CLI tabs older than 10m (crashed subagents)
 ```
 
 ---
 
-### charts / use
+### tabs
 
-List connected browser tabs and switch between them.
-
-```bash
-traderbro tv charts
-traderbro tv charts --json
-traderbro tv use <id-prefix>
-```
-
----
-
-### health
-
-Read-only diagnostic of the chart pipeline. Use at run start, between every K
-symbols in long loops, and after any error.
+List open TradingView tabs, marking CLI-owned ones and their age.
 
 ```bash
-traderbro tv health
-traderbro tv health --json
-traderbro tv health --quick                # skip slow udf_auth check
-traderbro tv health --mem-threshold 400    # fail if heap > 400 MB
+traderbro tvsandbox tabs
+traderbro tvsandbox tabs --json
 ```
-
-Runs five checks: `bridge_reachable`, `chart_connected`, `widget_ready`,
-`udf_auth`, `memory_ok`. Exits 0 if all pass, non-zero otherwise. Composes
-with shell `||`:
-
-```bash
-traderbro tv health || traderbro tv refresh
-```
-
-Output (JSON):
-
-```json
-{
-  "ok": true,
-  "checks": [
-    {"name": "bridge_reachable", "ok": true},
-    {"name": "chart_connected",  "ok": true, "tab_id": "35088f7f-...", "symbol": "NASDAQ:AAPL"},
-    {"name": "widget_ready",     "ok": true, "symbol": "NASDAQ:AAPL"},
-    {"name": "udf_auth",         "ok": true, "latency_ms": 27},
-    {"name": "memory_ok",        "ok": true, "heap_mb": 56, "threshold_mb": 1500}
-  ]
-}
-```
-
-The `udf_auth` check classifies HTTP 401 as auth failure; non-401 errors
-(like "no bar data for foreign symbol") pass auth but include a hint in the
-error field.
-
----
-
-### refresh
-
-Reload the browser tab and wait for the chart to reconnect. Use to reclaim
-memory or recover from stuck TV state (e.g. studies wedged after a
-resolution change).
-
-```bash
-traderbro tv refresh
-traderbro tv refresh --json
-traderbro tv refresh --verify-with-bars    # also confirm UDF auth post-reload
-traderbro tv refresh --timeout 30s         # extend reconnect ceiling
-```
-
-Cost: ~3-10s typical. Polls every 500 ms after a brief settle period for:
-- Same tab UUID back in connected charts (sessionStorage persists).
-- `tvWidget.activeChart()` non-null (widget fully bootstrapped).
-
-**Does NOT fix:** expired localStorage tokens (page reloads with same
-expired token), backend issues, permanently missing symbol data.
-
-**Important:** after refresh, the chart restores whatever layout was last
-saved via `tv save` — *not necessarily an empty chart, and not necessarily
-the symbol you were just analysing*. Always re-issue `tv symbol X` after
-a refresh.
 
 ---
 
 ### eval
 
-Escape hatch for TradingView API calls not yet in a named command.
+Run JavaScript against the chart page. The root object is `window.TradingViewApi`
+(its `activeChart()` is the chart). Promises are awaited.
 
 ```bash
-traderbro tv eval "tvWidget.activeChart().symbol()"
+traderbro tvsandbox eval "window.TradingViewApi.activeChart().symbol()"
+traderbro tvsandbox eval "window.TradingViewApi.activeChart().resolution()"
 ```
-
-If you use `eval` for the same operation more than once, that pattern belongs in
-`chart-bridge.js` as a named case. Use `tradingview-cli` for API discovery.
 
 ---
 
-## Standard Annotation Workflow
+### bars
+
+Load a symbol on the chart and return its raw OHLCV bars.
 
 ```bash
-# 1. Set chart
-traderbro tv symbol NASDAQ:NVDA 1D
-
-# 2. Set visible range
-traderbro tv range 2025-01-01
-
-# 3. See what's on the chart
-traderbro tv close
-traderbro tv screenshot -o /tmp/before.png
-
-# 4. Get authoritative timestamps for drawing
-traderbro tv bars --last 90 --json
-
-# 5. Annotate
-traderbro tv draw hline 850
-traderbro tv draw arrow up 2025-03-15 780
-
-# 6. Verify
-traderbro tv close
-traderbro tv screenshot -o /tmp/annotated.png
-
-# 7. Save
-traderbro tv save "NVDA support levels"
+traderbro tvsandbox bars NVDA --res 1D --json
 ```
-
-## Numeric Pattern-Detection Workflow
-
-For questions that need **exact indicator values** (not visual reading):
-
-```bash
-# 1. Set chart and studies you want to measure
-traderbro tv symbol NASDAQ:AAPL
-traderbro tv study add "Relative Strength Index"
-traderbro tv study add "Bollinger Bands"
-
-# 2. Pull bars + study values time-aligned (one call)
-traderbro tv study values --last 30 --include-volume --json > /tmp/data.json
-
-# 3. Run your numeric query against the time series with jq
-jq '
-  .bars
-  | map({date, close, rsi: (.studies | to_entries[] | select(.key|startswith("Relative")) | .value.Plot)})
-  | (max_by(.close)) as $pHi
-  | (max_by(.rsi // -1)) as $rHi
-  | "price-peak: \($pHi.date) close=\($pHi.close) rsi=\($pHi.rsi)\nrsi-peak:   \($rHi.date) rsi=\($rHi.rsi)\nbearish-div: \($pHi.date > $rHi.date)"
-' /tmp/data.json
-
-# 4. Annotate the bars you found, then screenshot
-traderbro tv draw arrow down 2026-05-12 294.27
-traderbro tv screenshot -o /tmp/annotated.png
-```
-
-Use this workflow for RSI divergence, MACD crossover detection, Bollinger
-squeeze identification, volume confirmation, and multi-indicator
-confluence. See the `tv-quant` skill (`traderbro skills read tv-quant`)
-for five worked patterns with verified output.
-
-## Long-Running Agent Loops
-
-For runs over many symbols (>20) or long unattended sessions, gate the loop
-with `tv health` and recover with `tv refresh`. The pattern:
-
-```bash
-# Pre-flight: health check, refresh if unhealthy, abort if still bad
-traderbro tv health || {
-  traderbro tv refresh
-  traderbro tv health || exit 1
-}
-
-# Set studies ONCE — they survive symbol switches and recompute automatically
-traderbro tv study add "Relative Strength Index"
-
-count=0
-for sym in $(cat symbols.txt); do
-  count=$((count + 1))
-
-  # Only if your loop draws shapes per symbol
-  # traderbro tv draw clear
-
-  traderbro tv symbol "$sym" || { echo "skip $sym"; continue; }
-  result=$(traderbro tv study values --last 60 --json --jq '.bars[-1]')
-  echo "$sym: $result"
-
-  # Defensive refresh every 50 symbols
-  if (( count % 50 == 0 )); then
-    traderbro tv refresh
-    traderbro tv symbol "$sym"               # re-set; refresh restores saved layout
-    traderbro tv study add "Relative Strength Index"   # re-add if not in saved layout
-  fi
-done
-```
-
-See the `tv-long-running` skill (`traderbro skills read tv-long-running`)
-for the full failure-mode → recovery decision table and memory budgeting
-guidance.
-
-## Flags
 
 | Flag | Default | Description |
 |---|---|---|
-| `--port` | `7891` | Bridge server port |
-| `--json` | false | Output as JSON |
-| `--no-color` | false | Disable colored output |
----
-sidebar_position: 2
-title: Accuracy Rate
----
+| `--res` | `1D` | Chart resolution (e.g. `5`, `60`, `1D`, `1W`, `1M`) |
 
-# Accuracy Rate
-
-`accuracy_rate` measures the percentage of an analyst's predictions that were directionally correct.
+Output (JSON): `{ "symbol", "res", "count", "bars": [{ "Time", "Open", "High", "Low", "Close", "Vol" }, …] }`.
+`Time` is unix seconds (UTC).
 
 ---
 
-## Definition
+### snap
 
-A prediction is directionally correct if the price moved in the direction of the call by the end of the measurement window:
-
-- **Bullish call** → stock price is higher than at time of call → ✓ correct
-- **Bearish call** → stock price is lower than at time of call → ✓ correct
-
-The measurement window is 3 months by default.
-
----
-
-## Minimum prediction threshold
-
-Accuracy is only shown when an analyst has **10 or more matured predictions**. Below this threshold, `accuracy_rate` is null.
-
-This prevents a single lucky call from showing a misleading 100% accuracy rate. An analyst with 3/3 correct is statistically indistinguishable from random; an analyst with 70/100 correct is not.
-
----
-
-## What accuracy does not measure
-
-- **Magnitude** — an analyst can be 80% accurate with tiny returns, or 55% accurate with large returns. Always look at `overall_return_pct` alongside accuracy.
-- **Timing** — a bullish call is correct if the price is higher at window maturity, even if it dropped 20% before recovering.
-- **Conviction size** — all predictions are weighted equally regardless of the analyst's stated confidence.
-
----
-
-## Accuracy vs return — which matters more?
-
-Neither alone is sufficient. The most useful signal is **high accuracy + high return**:
-
-| Accuracy | Return | Interpretation |
-|---|---|---|
-| High | High | Strong analyst with good magnitude calls |
-| High | Low | Correct direction but small moves |
-| Low | High | High-risk, high-reward style; volatile |
-| Low | Low | Poor signal overall |
-
-Use `--min-accuracy` and `--min-return` together to find analysts in the top-left quadrant:
+Load a symbol, frame the last N candles so the data is visible, and capture a clean PNG.
 
 ```bash
-traderbro analyst list --min-accuracy 65 --min-return 10 --min-predictions 20 --json
+traderbro tvsandbox snap TSLA --bars 250 --out /tmp/tsla.png
 ```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--res` | `1D` | Chart resolution |
+| `--bars` | `250` | Number of candles to frame into view |
+| `--margin` | `6` | Right-edge padding in bars |
+| `--out` | `snap.png` | Output image path |
+| `--full` | `false` | Full viewport instead of chart-only |
+
+---
+
+### frame
+
+Frame the current chart to show the last N candles (default 250).
+
+```bash
+traderbro tvsandbox frame 300
+```
+
+---
+
+### clear
+
+Remove drawings this CLI made via `tvsandbox draw` (leaves your own drawings untouched).
+
+```bash
+traderbro tvsandbox clear
+```
+
+---
+
+### screenshot
+
+Capture the current chart **as-is — this does NOT frame the view**. After `bars`/`metrics`
+the on-screen chart is unframed (candles crammed into a sliver). For a clean, readable
+figure use [`snap`](#snap) (loads + frames + captures); if you must use `screenshot`, run
+`tvsandbox frame 250` immediately before it.
+
+```bash
+traderbro tvsandbox frame 250 && traderbro tvsandbox screenshot /tmp/chart.png
+```
+
+---
+
+### screen
+
+Screen the US market via TradingView's public scanner API — **no browser, no login**.
+
+```bash
+traderbro tvsandbox screen --bear --limit 50 --json
+traderbro tvsandbox screen --bull --limit 30
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--bear` | (default) | Genuine-uptrend names rolling over (topping candidates) |
+| `--bull` | | Downtrend names turning up (bottoming candidates) |
+| `--limit` | `300` | Max rows per stock/ETF query |
+
+---
+
+### metrics
+
+Loop a symbol list on the dedicated Chrome, read each one's bars, and compute technical features
+(RSI(14), EMA200 distance, ATR%, % from 52-week high, 20-bar position, volume ratio, 20/60-bar
+returns) plus an upside composite score. Ranked output.
+
+```bash
+traderbro tvsandbox metrics NVDA,AAPL,MSFT --sort score
+traderbro tvsandbox metrics --universe sp500 --sort rsi --top 20
+cat syms.txt | traderbro tvsandbox metrics --symbols-file -
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--res` | `1D` | Chart resolution |
+| `--universe` | | Index universe (`sp500`, `nasdaq100`, `dow`) instead of an arg list |
+| `--symbols-file` | | File of symbols (JSON array, `{symbols:[…]}`, or one per line; `-` = stdin) |
+| `--sort` | `score` | Sort field: `score\|rsi\|distEma200\|fromHi\|r20\|r60\|pos20\|volR\|atrPct\|last` |
+| `--top` | `0` | Show only the top N rows (0 = all) |
+
+---
+
+### sweep
+
+Bulk-capture artifacts for many symbols so an agent can review them. For each symbol it loads
+the chart, writes a framed screenshot (`<out-dir>/<TICKER>.png`) and its bars
+(`<out-dir>/<TICKER>.json`), then an `<out-dir>/index.json`. This is the "go through each chart"
+tool — it produces the artifacts; the **agent** reads the bars/images and decides
+bull/bear/continuation (there is no detector).
+
+```bash
+traderbro tvsandbox sweep NVDA,AAPL,MSFT --out-dir /tmp/charts
+traderbro tvsandbox sweep --universe sp500 --res 1D --out-dir /tmp/sp
+traderbro tvsandbox screen --bull --limit 40 --json | jq -r '.[].sym' \
+  | traderbro tvsandbox sweep --symbols-file - --out-dir /tmp/bull
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--res` | `1D` | Chart resolution |
+| `--universe` | | Index universe (`sp500`, `nasdaq100`, `dow`) instead of an arg list |
+| `--symbols-file` | | File of symbols (JSON array, `{symbols:[…]}`, or one per line; `-` = stdin) |
+| `--out-dir` | `tvsweep` | Directory for `<TICKER>.png` + `<TICKER>.json` + `index.json` |
+| `--bars` | `250` | Candles to frame into each screenshot |
+| `--no-bars` | `false` | Skip the per-symbol bars JSON (screenshots only) |
+
+---
+
+### draw
+
+Render any of TradingView's ~90 native drawing objects on the chart — a thin passthrough to
+`createMultipointShape`. You supply the shape name and anchor points; there is no auto-detection.
+
+```bash
+traderbro tvsandbox draw fib_retracement --points "2026-04-01:164.27,2026-05-15:236.54" --screenshot fib.png
+traderbro tvsandbox draw anchored_vwap   --points 2026-04-07
+traderbro tvsandbox draw head_and_shoulders --symbol WLK --points "t1:p1,...,t7:p7" --screenshot hs.png
+```
+
+Points are comma-separated `time:price`; `time` = `YYYY-MM-DD` or unix seconds; `price` may be
+omitted for tools that ignore it (VWAP, volume profile). Each tool needs a specific number of
+points — if wrong, TradingView's `Required N` error is surfaced. Available shapes include
+`trend_line`, `rectangle`, `fib_retracement`(2), `fib_channel`(3), `anchored_vwap`(1),
+`fixed_range_volume_profile`(2), `head_and_shoulders`(7), `triangle_pattern`/`abcd_pattern`(4),
+`xabcd_pattern`(5), `elliott_impulse_wave`(6), `long_position`, `text`, and many more.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--points` | | Anchor points `"t1:p1,t2:p2,..."` (required) |
+| `--symbol` | | Load this symbol first (else draw on the current chart) |
+| `--res` | `1D` | Resolution when `--symbol` is given |
+| `--color` | | Line/shape color (e.g. `#2962ff`) |
+| `--width` | | Line width |
+| `--screenshot` | | Capture a PNG after drawing |
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| non-zero | Error — e.g. not signed in (run `tvsandbox login`), Chrome unavailable, or symbol load failed |
 ---
 sidebar_position: 3
 title: Prediction Model
@@ -2767,7 +2966,6 @@ Some fields may be null for valid reasons:
 | `stated_price_target` | No specific target mentioned in the content |
 | `is_directionally_correct` | Return window has not matured yet |
 | `avg_return_3m` | Insufficient matured windows to calculate |
-| `accuracy_rate` | Fewer than 10 matured predictions |
 ---
 sidebar_position: 1
 title: Return Calculation
@@ -2844,7 +3042,7 @@ title: Sector Edge
 
 # Sector Edge
 
-Sector edge is a per-analyst breakdown of accuracy and return by sector or industry, showing where an analyst's expertise is concentrated.
+Sector edge is a per-analyst breakdown of return by sector or industry, showing where an analyst's expertise is concentrated.
 
 ---
 
@@ -2877,12 +3075,11 @@ traderbro analyst sector-edge noLimitGains --min-calls 5 --period 3m
 
 ## Interpreting the output
 
-| Accuracy | Return | Interpretation |
+| Return | Calls | Interpretation |
 |---|---|---|
-| High | High | Genuine edge — analyst understands this sector deeply |
-| High | Low | Correct direction but small moves; may be a conservative sector |
-| Low | High | High-risk style in this sector; volatile outcomes |
-| Low | Low | No edge here; avoid this analyst's calls in this sector |
+| High | Many | Genuine edge — consistent gains across enough calls to trust it |
+| High | Few | Promising, but a thin sample; could be luck. Raise `--min-calls` |
+| Low / negative | Many | No edge here; this analyst's calls in this sector underperform |
 | — | — | Fewer than min-calls, or windows not yet matured |
 
 ---
@@ -2998,16 +3195,16 @@ Once you've [authenticated](/getting-started/authentication), try these commands
 ## See top analysts
 
 ```bash
-traderbro analyst list --sort accuracy --limit 10
+traderbro analyst list --sort return --limit 10
 ```
 
 Output:
 
 ```
-Slug              Name            Accuracy   Predictions   Return %
-────────────────────────────────────────────────────────────────────
-noLimitGains      No Limit Gains  71.2%      42            +18.4%
-aleabitoreddit    Alea Bitor      68.5%      31            +14.1%
+Slug              Name            Predictions   Return %
+──────────────────────────────────────────────────────────
+noLimitGains      No Limit Gains  42            +18.4%
+aleabitoreddit    Alea Bitor      31            +14.1%
 ...
 ```
 
@@ -3036,7 +3233,7 @@ traderbro prediction list --symbol NVDA --direction bullish --json
 Add `--json` to any command for machine-readable output — use this for scripts and AI agents:
 
 ```bash
-traderbro analyst list --sort accuracy --limit 5 --json
+traderbro analyst list --sort return --limit 5 --json
 ```
 
 ```json
@@ -3047,7 +3244,6 @@ traderbro analyst list --sort accuracy --limit 5 --json
     {
       "slug": "noLimitGains",
       "name": "No Limit Gains",
-      "accuracy_rate": 71.2,
       "predictions_count": 42,
       "overall_return_pct": 18.4
     }
@@ -3058,8 +3254,8 @@ traderbro analyst list --sort accuracy --limit 5 --json
 ## Inline filtering with `--jq`
 
 ```bash
-# Just names and accuracy
-traderbro analyst list --limit 10 --jq '.results[] | {slug, accuracy_rate}'
+# Just names and return
+traderbro analyst list --limit 10 --jq '.results[] | {slug, overall_return_pct}'
 ```
 
 ---
@@ -3190,39 +3386,25 @@ This guide walks through the most useful combinations of filters for discovering
 
 ---
 
-## Start with accuracy
+## Start with return
 
-The default sort. Gets you analysts with the highest directional hit rate:
-
-```bash
-traderbro analyst list --sort accuracy --limit 20
-```
-
-Accuracy alone is not enough — an analyst with 10 predictions at 80% accuracy is less meaningful than one with 100 predictions at 70%.
-
-Add a minimum prediction count:
+The default sort. Return is how TraderBro measures analyst quality — how much money an analyst's calls would have made:
 
 ```bash
-traderbro analyst list --sort accuracy --min-predictions 20 --limit 20
+traderbro analyst list --sort return --limit 20
 ```
 
----
-
-## Sort by return instead
-
-Accuracy measures whether calls are directionally correct. Return measures how much money those calls would have made:
+Return alone is not enough — an analyst with 10 predictions is less meaningful than one with 100. Add a minimum prediction count so a couple of lucky calls don't top the list:
 
 ```bash
-traderbro analyst list --sort return --min-predictions 15 --limit 10
+traderbro analyst list --sort return --min-predictions 20 --limit 20
 ```
-
-A high-return analyst who is only 55% accurate may still outperform a 75% accurate analyst with low-magnitude calls.
 
 ---
 
 ## Use a time window
 
-Return and accuracy sorted over a specific period:
+Return sorted over a specific period:
 
 ```bash
 # Best analysts by 3-month return
@@ -3242,7 +3424,7 @@ See [Filtering by Period](/guides/filtering-by-period) for a full explanation of
 
 ```bash
 # US-focused analysts
-traderbro analyst list --country US --sort accuracy --min-predictions 20
+traderbro analyst list --country US --sort return --min-predictions 20
 
 # Bangladesh market analysts
 traderbro analyst list --country BD --sort return
@@ -3266,14 +3448,13 @@ The return shown in sector/industry mode is the analyst's return within that seg
 ## Combine filters
 
 ```bash
-# US Technology analysts, 3-month return, ≥15 predictions, ≥60% accuracy
+# US Technology analysts, 3-month return, ≥15 predictions
 traderbro analyst list \
   --country US \
   --sector Technology \
   --period 3m \
   --sort return \
   --min-predictions 15 \
-  --min-accuracy 60 \
   --json
 ```
 
@@ -3358,8 +3539,8 @@ traderbro analyst list --plain | awk -F'\t' '{print $1, $3}'
 # Just slugs
 traderbro analyst list --jq '.results[].slug'
 
-# Slugs and accuracy as CSV
-traderbro analyst list --jq '.results[] | [.slug, .accuracy_rate] | @csv'
+# Slugs and return as CSV
+traderbro analyst list --jq '.results[] | [.slug, .overall_return_pct] | @csv'
 
 # Predictions for NVDA, bullish only, return > 10%
 traderbro prediction list --symbol NVDA --direction bullish --json \
@@ -3421,7 +3602,7 @@ An analyst who is great overall may be mediocre in specific sectors. Sector edge
 
 ## Why sector edge matters
 
-Two analysts may both have 65% accuracy lifetime. But one might be 80% accurate in Technology and 45% in Energy, while the other is consistently 65% across all sectors. Before acting on a tech call, you want to know which category each analyst falls into.
+Two analysts may both post strong overall returns. But one might make most of that return in Technology and lose money in Energy, while the other is consistently solid across all sectors. Before acting on a tech call, you want to know which category each analyst falls into.
 
 ---
 
@@ -3434,11 +3615,11 @@ traderbro analyst sector-edge noLimitGains --period 3m
 Output:
 
 ```
-Sector          Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────
-Technology      14      78.6%        +24.3%
-Financials      8       62.5%        +9.1%
-Energy          3       —            —
+Sector          Calls   Return % (3M)
+─────────────────────────────────────────
+Technology      14      +24.3%
+Financials      8       +9.1%
+Energy          3       —
 ```
 
 `—` appears when there are fewer calls than `--min-calls` (default 3) or return windows haven't matured.
@@ -3450,11 +3631,11 @@ traderbro analyst sector-edge noLimitGains --group-by industry --period 3m
 ```
 
 ```
-Industry            Calls   Accuracy %   Return % (3M)
-──────────────────────────────────────────────────────
-Semiconductors      9       88.9%        +31.2%
-Software            5       60.0%        +14.1%
-Banks               4       75.0%        +7.3%
+Industry            Calls   Return % (3M)
+─────────────────────────────────────────────
+Semiconductors      9       +31.2%
+Software            5       +14.1%
+Banks               4       +7.3%
 ```
 
 ---
@@ -3482,11 +3663,11 @@ traderbro analyst sector-map --period 3m
 ```
 
 ```
-Sector          Calls   Analysts   Accuracy %   Return % (3M)
-───────────────────────────────────────────────────────────────
-Technology      248     18         66.9%        +15.2%
-Financials      134     12         61.2%        +8.7%
-Energy          87      9          58.6%        +4.1%
+Sector          Calls   Analysts   Return % (3M)
+──────────────────────────────────────────────────
+Technology      248     18         +15.2%
+Financials      134     12         +8.7%
+Energy          87      9          +4.1%
 ```
 
 This tells you which sectors the TraderBro analyst pool has the most reliable signal in overall — useful for knowing which types of calls to trust most.
@@ -3699,6 +3880,22 @@ Prints the complete markdown workflow including step-by-step commands, scoring l
 | Name | Description | Trigger keywords |
 |---|---|---|
 | `analyst-top-picks` | Finds stocks to buy from the best-performing analysts | "what should I buy", "best analyst picks", "top recommendations" |
+| `tvsandbox-setup` | **Read first** for the official tradingview.com chart: login gate, port 9333, single-Chrome rule | "tvsandbox", "set up tradingview", "intraday data", "extended hours" |
+| `tvsandbox-reading` | Read/judge one symbol from official data (bars + screenshot); no detector — agent decides | "read the chart", "is this bullish", "what pattern" |
+| `tvsandbox-scanning` | Bulk scan: `screen` → `metrics` → `sweep` across many symbols | "scan the market", "go through each chart", "find candidates" |
+| `tvsandbox-drawing` | Annotate with any of ~90 native TradingView objects via `tvsandbox draw` | "draw a fib", "mark support", "annotate the chart" |
+
+## Chart access — which command
+
+TraderBro reaches charts three ways; route by what you need:
+
+- **`tvsandbox`** — the official `tradingview.com/chart` over CDP. High-fidelity price/volume
+  (intraday, extended-hours, long history), bulk scanning, and native drawing. Start with
+  `traderbro skills show tvsandbox-setup`.
+- **`brochart`** — the traderbro.ai-hosted chart, carrying TraderBro's **proprietary overlays**
+  (analyst marks, calculated events, predictions).
+- **`calculated-events`** — server-side **pattern detection**. There is no geometry detector in
+  the CLI; on tvsandbox the agent judges bull/bear/continuation from the bars + screenshot.
 ---
 slug: /
 sidebar_position: 1
@@ -3710,7 +3907,7 @@ title: TraderBro CLI
 Query analyst predictions, returns, sector analytics, and research — from your terminal.
 
 ```bash
-traderbro analyst list --sort accuracy --limit 10 --json
+traderbro analyst list --sort return --limit 10 --json
 traderbro analyst sector-edge noLimitGains --period 3m
 traderbro prediction list --symbol NVDA --since 2025-01-01 --json
 ```
@@ -3735,7 +3932,7 @@ Designed for both humans and AI agents. Every command supports `--json` for mach
 
 ## What you can do
 
-- **Rank analysts** by accuracy, return, or prediction count across any time window (7d, 1m, 3m, 6m, 1y)
+- **Rank analysts** by return or prediction count across any time window (7d, 1m, 3m, 6m, 1y)
 - **Drill into sector edge** — see which sectors an analyst consistently outperforms in
 - **Browse predictions** — filter by symbol, direction, date range, and correctness
 - **Monitor content** — query the tweets, videos, and articles that feed the prediction pipeline

@@ -25,17 +25,27 @@ Designed for humans and AI agents. Always use --json for machine-readable output
 - [Using with AI Agents](/guides/using-with-ai-agents): Prompts, patterns, and workflow skills for Claude, GPT, and other AI assistants
 - [Workflow Skills](/guides/using-with-ai-agents#workflow-skills): Step-by-step skill workflows embedded in the binary — run `traderbro skills list --json` to discover them
 
-## Chart Control (traderbro tv)
+## Chart Control — traderbro.ai chart (traderbro brochart)
 
-Requires `traderbro tv serve` running and the TraderBro chart page open in browser.
+The proprietary-data chart: TraderBro's custom overlays (analyst marks, calculated events, predictions). Requires `traderbro brochart serve` running and the TraderBro chart page open in browser.
 
-- [Chart Control Reference](/cli-reference/tv): serve, state, symbol, screenshot, bars, draw, study (list/add/remove/clear/values), save, zoom, range, timeframe, search, close, charts, use, eval, health, refresh
+- [brochart Reference](/cli-reference/brochart): serve, state, symbol, screenshot, bars, draw, study (list/add/remove/clear/values), save, zoom, range, timeframe, search, close, charts, use, eval, health, refresh
 - Standard workflow: symbol → range → close+screenshot → bars → draw → close+screenshot → save
-- Always run `tv close` before `tv screenshot`; always run `tv bars` before `tv draw` to get authoritative timestamps
-- For numeric questions (RSI value, MACD cross detection, divergence patterns), use `tv study values` — returns bars + every active study's computed series time-aligned in one fetch
-- `tv bars` now returns volume in the `v` field; `tv study values --include-volume` hoists Volume to a top-level `volume` field
-- For long-running agents (>20 symbols), use `tv health` (read-only diagnostic) and `tv refresh` (reload tab to reclaim memory or recover from stuck state). See the `tv-long-running` skill for the composition pattern.
-- `tv eval` is an escape hatch only — use structured commands first
+- Always run `brochart close` before `brochart screenshot`; always run `brochart bars` before `brochart draw` to get authoritative timestamps
+- For numeric questions (RSI value, MACD cross detection, divergence patterns), use `brochart study values` — returns bars + every active study's computed series time-aligned in one fetch
+- `brochart bars` returns volume in the `v` field; `brochart study values --include-volume` hoists Volume to a top-level `volume` field
+- For long-running agents (>20 symbols), use `brochart health` (read-only diagnostic) and `brochart refresh` (reload tab to reclaim memory or recover from stuck state). See the `tv-long-running` skill for the composition pattern.
+- `brochart eval` is an escape hatch only — use structured commands first
+
+## Chart Control — official tradingview.com chart (traderbro tvsandbox)
+
+The high-fidelity price/volume path via Chrome DevTools Protocol on a dedicated, app-owned Chrome (port 9333, profile ~/.traderbro/chrome-profile). Deeper intraday, extended hours, long history, and bulk scanning. Sign in once with `traderbro tvsandbox login` (run `traderbro skills show tvsandbox-setup` first).
+
+- [tvsandbox Reference](/cli-reference/tvsandbox): login, whoami, eval, bars, snap, frame, screenshot, screen, metrics, sweep, draw, clear
+- `screen` calls TradingView's public scanner API directly — no browser, no login; everything else needs a signed-in session. One shared Chrome — run tvsandbox commands sequentially, never concurrently.
+- **No pattern detector** — the agent judges bull/bear/continuation from bars + screenshot; server-side pattern detection is `traderbro calculated-events`.
+- Workflow: `screen` (prefilter) → `metrics` (rank) → `sweep` (bulk per-symbol screenshot+bars for AI review) → read + decide; `draw <shape> --points` renders any of ~90 native TradingView objects (you supply the anchors), `clear` removes them
+- Use `tvsandbox` for real intraday/extended-hours data, bulk scanning, and native drawing; use `brochart` for TraderBro's proprietary overlays; use `calculated-events` for pattern detection
 
 ## Global flags (apply to all commands)
 
