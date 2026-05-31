@@ -159,14 +159,24 @@ traderbro symbol trending [flags]
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--since` | string | `all` | Time window: `3d`, `7d`, `15d`, `1m`, `3m`, `1y`, `all` |
+| `--since` | string | `all` | Time window: `4h`, `24h`, `1d`, `3d`, `7d`, `15d`, `30d`, `1m`, `3m`, `1y`, `all` |
 | `--exchange` | string | — | Filter by exchange (e.g. `NASDAQ`, `NYSE`) |
 | `--sector` | string | — | Filter by sector (e.g. `Technology`, `Healthcare`) |
-| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `bullish`, `bearish` |
+| `--sort` | string | `analysts` | Sort order: `analysts`, `predictions`, `volume`, `bullish`, `bearish`, `skew`, `change` |
+| `--min-predictions` | int | `0` | Drop symbols with fewer than N predictions in the window |
+| `--summary` | bool | `false` | Window aggregates only (totals, ratio, unique symbols/analysts) — for live-tape posts |
+
+`--sort skew` ranks by `bull_bear_ratio`; `--sort change` ranks by `pct_change_vs_prior_window` (prediction volume vs the immediately-prior equal-length window — momentum). Both require a bounded `--since`. Each result includes `bull_bear_ratio` and `pct_change_vs_prior_window`; `latest_prediction_at` is ISO 8601 in market time (ET).
 
 ### Examples
 
 ```bash
+# Most-covered symbols in the last 4 hours (intraday)
+traderbro symbol trending --since 4h
+
+# Most-covered symbols in the last 24 hours
+traderbro symbol trending --since 24h
+
 # Most-covered symbols in the last 7 days
 traderbro symbol trending --since 7d
 
@@ -175,6 +185,15 @@ traderbro symbol trending --since 1m --exchange NASDAQ --sort bullish
 
 # Technology sector, all time, JSON
 traderbro symbol trending --sector Technology --json
+
+# What's SURGING in attention right now (momentum), min 3 prints
+traderbro symbol trending --since 24h --sort change --min-predictions 3 --json
+
+# Most one-sided (bull/bear skew) this week
+traderbro symbol trending --since 7d --sort skew --json
+
+# Aggregate tape summary for a live post (no per-symbol breakdown)
+traderbro symbol trending --since 24h --summary --json
 
 # Pipe to jq
 traderbro symbol trending --since 7d --json | jq '.results[:5] | .[].ticker'

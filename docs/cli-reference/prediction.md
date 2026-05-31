@@ -28,6 +28,7 @@ traderbro prediction list [flags]
 | `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
 | `--since` | string | — | Predictions published on or after (YYYY-MM-DD) |
 | `--until` | string | — | Predictions published on or before (YYYY-MM-DD) |
+| `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` (combine with `--symbol`) |
 | `--correct` | string | — | Filter by correctness: `true` or `false` |
 | `--sort` | string | `date` | Sort by: `date`, `return`, `confidence` |
 
@@ -39,6 +40,9 @@ traderbro prediction list --symbol NVDA --json
 
 # Bullish calls since January 2025
 traderbro prediction list --direction bullish --since 2025-01-01 --json
+
+# NVDA prints in the last 4 hours (intraday, market time)
+traderbro prediction list --symbol NVDA --window 4h --json
 
 # Predictions by a specific analyst on TSLA
 traderbro prediction list --analyst noLimitGains --symbol TSLA --json

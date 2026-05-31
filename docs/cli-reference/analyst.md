@@ -137,15 +137,22 @@ List predictions made by an analyst.
 ### Usage
 
 ```bash
-traderbro analyst predictions <slug> [flags]
+traderbro analyst predictions [slug] [flags]
 ```
+
+The analyst can be given as the positional `slug` or via `--handle` (equivalent).
 
 ### Flags
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
+| `--handle` | string | — | Analyst handle/slug (alternative to the positional arg) |
 | `--symbol` | string | — | Filter by ticker (e.g. `AAPL`) |
 | `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
+| `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` |
+| `--since` | string | — | Filter after date (YYYY-MM-DD) |
+| `--until` | string | — | Filter before date (YYYY-MM-DD) |
+| `--limit` | int | `20` | Max results (global flag) |
 
 ### Examples
 
@@ -153,6 +160,9 @@ traderbro analyst predictions <slug> [flags]
 traderbro analyst predictions noLimitGains
 traderbro analyst predictions aleabitoreddit --direction bullish --json
 traderbro analyst predictions crux_capital_ --symbol TSLA --json
+
+# A specific analyst's recent prints (last 24h), via --handle
+traderbro analyst predictions --handle noLimitGains --window 24h --json
 ```
 
 ### Output (JSON mode)
