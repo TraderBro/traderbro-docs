@@ -180,7 +180,16 @@ traderbro tvsandbox snap TSLA --bars 250 --out /tmp/tsla.png
 | `--bars` | `250` | Number of candles to frame into view |
 | `--margin` | `6` | Right-edge padding in bars |
 | `--out` | `snap.png` | Output image path |
-| `--full` | `false` | Full viewport instead of chart-only |
+| `--full` | `false` | Capture the full browser viewport (incl. toolbars) instead of just the chart |
+
+**Capture method & privacy:** `snap` captures the chart via a **CDP grab clipped to
+the chart pane** — a clean chart with **no account-name watermark**. This matters for
+a shared/pooled TradingView session (plan 153): TradingView's `takeClientScreenshot`
+stamps "<username> created with TradingView.com …" onto every image, which would leak
+the house account's name to end users. The CDP clip avoids that at the same
+resolution, size, and speed (~2730px, ~330 KB, ~95 ms — on par with the native path).
+`takeClientScreenshot` is retained only as a silent fallback if the chart pane can't
+be located. `--full` grabs the whole viewport (incl. toolbars) for debugging.
 
 **Auto-recovery:** if the chart switches to the symbol but its data feed never
 delivers bars (a stale/dead Chrome data socket — the session is still signed in,
