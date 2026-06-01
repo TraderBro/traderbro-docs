@@ -182,6 +182,13 @@ traderbro tvsandbox snap TSLA --bars 250 --out /tmp/tsla.png
 | `--out` | `snap.png` | Output image path |
 | `--full` | `false` | Full viewport instead of chart-only |
 
+**Auto-recovery:** if the chart switches to the symbol but its data feed never
+delivers bars (a stale/dead Chrome data socket — the session is still signed in,
+but the chart hangs on "loading"), `snap` (and `bars`) automatically restart the
+dedicated Chrome **once** and retry. A fresh Chrome reloads the saved session and
+the feed resumes — no action needed. An *unresolved/invalid symbol* fails fast
+(no restart). This is most common on the first request after a long-idle Chrome.
+
 ---
 
 ### frame
