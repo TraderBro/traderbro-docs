@@ -9,85 +9,78 @@ Commands for querying analyst predictions across all tracked symbols.
 
 ---
 
-## traderbro prediction list
+## traderbro prediction
 
-List analyst predictions with filtering and sorting options.
+The single surface over analyst predictions — filter by **analyst, symbol, date, sector/industry,
+and return**. Bare `traderbro prediction` lists (same as `prediction list`). It replaces the old
+`analyst predictions <slug>` and `symbol predictions <EX:TICKER>` commands.
 
 ### Usage
 
 ```bash
-traderbro prediction list [flags]
+traderbro prediction [flags]
 ```
+
+### Combining filters (the contract)
+
+- **Different filters AND together**; **repeated/comma values of the same filter OR together.**
+- `--symbol` takes a bare ticker (any exchange) or `EXCHANGE:TICKER` (exact). Max 25. A symbol
+  list can be piped in (one per line) from `screener run --symbols-only`.
+- **`--period` selects WHICH return** drives `--min-return` / `--max-return` / `--sort return`
+  and the displayed return column: `current` (live, default) or the frozen window returns
+  `7d|1m|3m|6m|1y`.
+- **NULL window returns mean "not yet measurable"** (the window hasn't matured) — return
+  filters and return sorts **exclude** such rows; they are never treated as 0.
 
 ### Flags
 
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--symbol` | string | — | Filter by ticker (e.g. `AAPL`, `TSLA`) |
-| `--analyst` | string | — | Filter by analyst slug |
-| `--direction` | string | — | Filter by direction: `bullish`, `bearish`, `neutral` |
-| `--since` | string | — | Predictions published on or after (YYYY-MM-DD) |
-| `--until` | string | — | Predictions published on or before (YYYY-MM-DD) |
-| `--window` | string | — | Relative window: `4h`, `24h`, `3d`, `7d`, `30d` (combine with `--symbol`) |
-| `--tz` | string | — | Render `published_at` in this IANA zone, e.g. `America/New_York`, `Asia/Dhaka` (default: UTC) |
-| `--correct` | string | — | Filter by correctness: `true` or `false` |
-| `--sort` | string | `date` | Sort by: `date`, `return`, `confidence` |
+| Flag | Type | Description |
+|---|---|---|
+| `--analyst` | string (repeatable) | analyst slug; OR; max 25 |
+| `--symbol` | string (repeatable) | bare ticker or `EXCHANGE:TICKER`; OR; max 25; stdin pipe |
+| `--direction` | string (repeatable) | `bullish`, `bearish`, `neutral` |
+| `--sector` / `--industry` | string (repeatable) | symbol sector / industry at prediction time |
+| `--period` | string | `current` (default), `7d`, `1m`, `3m`, `6m`, `1y` |
+| `--min-return` / `--max-return` | number | bounds on the `--period` return (NULLs excluded) |
+| `--correct` | true/false | directional correctness |
+| `--open` | true/false | `true` = call still running; `false` = closed by a reversal |
+| `--series-first` | true/false | `true` = only the first call of a series (dedupe repeats) |
+| `--has-target` | true/false | stated price target present |
+| `--min-confidence` | number | 0–100 (NULL excluded) |
+| `--since` / `--until` | YYYY-MM-DD | publish-date range |
+| `--window` | string | relative: `4h`, `24h`, `3d`, `7d`, `30d` |
+| `--sort` | string | `date` (default), `return` (uses `--period`), `confidence` |
+| `--tz` | IANA zone | render `published_at` in this timezone |
+| `--describe` | bool | print valid values + limits (live, from the server) |
+| `--limit` / `--page`, `--json` / `--plain` / `--jq` | | global |
 
 ### Examples
 
 ```bash
-# All NVDA predictions
-traderbro prediction list --symbol NVDA --json
+# An analyst's bullish calls already up >10% one month out
+traderbro prediction --analyst ray-wang --direction bullish --period 1m --min-return 10
 
-# Bullish calls since January 2025
-traderbro prediction list --direction bullish --since 2025-01-01 --json
+# Across two symbols: last month's calls, best 3-month returns first
+traderbro prediction --symbol NVDA,AMD --since 2026-05-10 --sort return --period 3m
 
-# NVDA prints in the last 4 hours (intraday, market time)
-traderbro prediction list --symbol NVDA --window 4h --json
+# Open (not reversed) first-of-series tech calls with a stated target
+traderbro prediction --sector Technology --open true --series-first true --has-target true
 
-# Predictions by a specific analyst on TSLA
-traderbro prediction list --analyst noLimitGains --symbol TSLA --json
+# Pipe a screen into prediction
+traderbro screener run --filter "industry:eq:Semiconductors" --symbols-only \
+  | traderbro prediction --period 1m --min-return 20
 
-# Incorrect predictions sorted by worst return
-traderbro prediction list --correct false --sort return --json
-
-# Daily watchlist script
-for symbol in NVDA AMD MSFT; do
-  traderbro prediction list --symbol $symbol \
-    --since $(date -v-1d +%Y-%m-%d) --json
-done
+# Vocabulary
+traderbro prediction --describe
 ```
 
-### Output (Table mode)
+### Output
 
-```
-ID    Analyst          Symbol   Direction   Return %   Correct   Published
-──────────────────────────────────────────────────────────────────────────
-101   No Limit Gains   NVDA     bullish     +22.4%     ✓         2025-03-15
-102   Alea Bitor       TSLA     bearish     +8.1%      ✓         2025-03-10
-103   Crux Capital     AAPL     bullish     -3.2%      ✗         2025-03-05
-```
+Table columns: `ID, Analyst, Symbol, Direction, Return % (per --period), Correct, Sector,
+Published`. JSON rows include all five window returns, `confidence_score`, `symbol_sector`,
+`symbol_industry`, `is_series_first`, `closed_at`.
 
-`—` in the Correct column means the prediction window has not matured yet.
-
-### Output (JSON mode)
-
-```json
-{
-  "count": 234,
-  "next": "https://traderbro.ai/...",
-  "results": [...],
-  "list_limit": 100,
-  "list_limit_tier": "anonymous",
-  "list_limit_reached": true
-}
-```
-
-When `list_limit_reached` is `true`, results are capped by your plan. The CLI prints a warning to stderr:
-
-```
-  ⚠ Showing first 100 results (guest limit). Log in or upgrade at https://traderbro.ai/#pricing
-```
+Unknown `--direction`/`--period` values return an error listing the valid set.
 
 ---
 
