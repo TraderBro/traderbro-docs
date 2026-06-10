@@ -17,7 +17,8 @@ traderbro <command-group> <subcommand> [arguments] [flags]
 |---|---|
 | [`analyst`](/cli-reference/analyst) | List analysts, get profiles, view predictions, sector edge, sector map |
 | [`prediction`](/cli-reference/prediction) | List and get individual analyst predictions |
-| [`symbol`](/cli-reference/symbol) | Search symbols, list mentions and predictions per symbol |
+| [`symbol`](/cli-reference/symbol) | Search symbols, list predictions per symbol |
+| [`insight`](/cli-reference/insight) | Analyst commentary/insight/prediction mentions for symbols and/or analysts, with sentiment and tags |
 | [`content`](/cli-reference/content) | Query monitored tweets, videos, and articles |
 | [`research`](/cli-reference/research) | Published research articles |
 | [`screener`](/cli-reference/screener) | Screen stocks by fundamentals, valuation, price, and performance using the live DataMatrix |

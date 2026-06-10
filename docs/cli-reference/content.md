@@ -68,7 +68,7 @@ traderbro content list --relevant --securities --since 2025-01-01 --json
 
 ## traderbro content get
 
-Get full content detail including symbol mentions.
+Get full content detail including symbol mentions (each with `sentiment` and `tags`).
 
 ### Usage
 

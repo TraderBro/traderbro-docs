@@ -11,7 +11,7 @@ Commands for searching and querying symbols tracked by TraderBro.
 
 ## traderbro symbol search
 
-Find the `EXCHANGE:SYMBOL` identifier for a company. Use the returned value with `symbol mentions` or `symbol predictions`.
+Find the `EXCHANGE:SYMBOL` identifier for a company. Use the returned value with `insight --symbol` or `symbol predictions`.
 
 ### Usage
 
@@ -46,62 +46,7 @@ traderbro symbol search AAPL --json
 }
 ```
 
-The `symbol` field is in `EXCHANGE:SYMBOL` format and is directly usable with `symbol mentions` and `symbol predictions`.
-
----
-
-## traderbro symbol mentions
-
-List content mentions for a symbol (from tweets, videos, articles).
-
-### Usage
-
-```bash
-traderbro symbol mentions <EXCHANGE:SYMBOL> [flags]
-```
-
-### Flags
-
-| Flag | Type | Default | Description |
-|---|---|---|---|
-| `--type` | string | — | Filter by mention type: `commentary`, `prediction`, `risk_mention`, `conditional_prediction` |
-
-### Examples
-
-```bash
-traderbro symbol mentions NASDAQ:TSLA --json
-traderbro symbol mentions BINANCE:BTC --type commentary --json
-traderbro symbol mentions NASDAQ:TSLA --type prediction --json
-
-# Get all analysts who have commented on a symbol
-traderbro symbol mentions NASDAQ:NVDA --json --jq '[.results[].analyst_slug] | unique'
-```
-
-### Output (JSON mode)
-
-```json
-{
-  "count": 12,
-  "page": 1,
-  "page_size": 25,
-  "total_pages": 1,
-  "results": [
-    {
-      "id": 201,
-      "symbol_ticker": "BTC",
-      "analyst_slug": "apompliano",
-      "mention_type": "commentary",
-      "direction": null,
-      "confidence_score": null,
-      "key_quote": "bitcoin is hanging in there...",
-      "content_url": "https://x.com/APompliano/status/...",
-      "content_published": "2026-03-13T18:36:45Z"
-    }
-  ]
-}
-```
-
----
+The `symbol` field is in `EXCHANGE:SYMBOL` format and is directly usable with `insight --symbol` and `symbol predictions`.
 
 ## traderbro symbol predictions
 
