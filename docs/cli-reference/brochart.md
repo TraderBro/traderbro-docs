@@ -301,6 +301,43 @@ traderbro brochart use <id-prefix>
 
 ---
 
+### analysts / patterns / tab — sidebar control (plan 181)
+
+Read and set the chart sidebar's data tabs — which **analysts** and calculated-event
+**patterns** overlay the chart — and switch the active tab. These drive the SAME
+sidebar handlers a person clicks, so the CLI sees/sets exactly what the UI does.
+(Analysts/patterns are the self-hosted chart's proprietary overlays — `tvsandbox`,
+which only sees tradingview.com, cannot render them.)
+
+```bash
+# Analysts — slugs come from `analysts list`; selection overlays their calls as marks
+traderbro brochart analysts list                       # available + selected for the current symbol
+traderbro brochart analysts select the-analyst         # REPLACE selection (default)
+traderbro brochart analysts select acme --add          # append
+traderbro brochart analysts select acme --remove       # drop one
+traderbro brochart analysts select --clear             # remove all
+traderbro brochart analysts select a b --direction bullish   # filter marks bullish|bearish|all
+
+# Patterns — types come from `patterns list`; selection overlays event markers
+traderbro brochart patterns list
+traderbro brochart patterns select golden_cross death_cross   # REPLACE
+traderbro brochart patterns select bull_flag --add --horizon 6m
+traderbro brochart patterns select --clear
+
+# Tab — switch the active sidebar panel (opens it if collapsed)
+traderbro brochart tab analysts            # symbols|analysts|patterns|copilot|hermes
+```
+
+Notes:
+- The available **analysts** list populates once the Analysts tab has fetched for the
+  current symbol — run `tab analysts` (or `analysts list`) after switching symbols.
+- `brochart state --json` now includes a `sidebar` block (active tab + analyst/pattern
+  selection) for one-shot reads.
+- Modes: bare slugs/types **replace** the selection; `--add` / `--remove` / `--clear`
+  adjust it. Selection changes refresh the chart overlays immediately.
+
+---
+
 ### health
 
 Read-only diagnostic of the chart pipeline. Use at run start, between every K
