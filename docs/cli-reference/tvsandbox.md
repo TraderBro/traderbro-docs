@@ -23,11 +23,19 @@ traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
 
 - A dedicated Chrome is launched on its own debug port (**default 9333**, deliberately *not*
   9222) with a persistent profile at `~/.traderbro/chrome-profile`, bound to `127.0.0.1` only.
-- Login is detected from TradingView's own `window.user` (a real numeric user id), not the
-  `sessionid` cookie. Sign in once with `tvsandbox login`; every later run reuses the session.
-- Data commands (`bars`, `snap`, `screenshot`, `metrics`, `sweep`, and `draw --symbol`) require
-  a signed-in session — guests cannot load arbitrary per-symbol data. `screen` is the exception:
-  it calls TradingView's public scanner API directly over HTTP, with no browser and no login.
+- **Guest mode is the default and is fully supported.** Data commands (`bars`, `snap`,
+  `screenshot`, `metrics`, `sweep`, `draw --symbol`) all run logged-OUT: a guest chart loads
+  per-symbol bars, switches symbol/resolution, captures, and computes up to **2 indicators** — on a
+  **delayed (BATS) feed**. Fine for daily/weekly TA; do not present an intraday guest print as a
+  live quote. (`screen` needs no browser at all — it calls TradingView's public scanner API over
+  HTTP.)
+- **Indicator budget: 2 per chart** in guest mode (`brochart study add` refuses the 3rd with a
+  "remove one first" message — `Volume` is the free default overlay and doesn't count). Avoid
+  add/remove churn within a session; reload if a pane comes up empty.
+- Logging in is **optional** (and currently unused in production — the TV session pool is
+  mothballed, see `docs-devops/tvsandbox-session-pool-mothballed.md`). `tvsandbox login` /
+  `auth export` still work for a signed-in machine; login is detected from TradingView's own
+  `window.user`, not the `sessionid` cookie.
 - **No pattern detector.** tvsandbox does not detect chart patterns — the agent judges
   bull/bear/continuation from the bars + screenshot, and server-side detection lives in
   [`calculated-events`](./calculated-events.md). tvsandbox *draws* any native shape you anchor.
