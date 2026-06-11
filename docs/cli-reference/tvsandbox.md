@@ -29,9 +29,11 @@ traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
   **delayed (BATS) feed**. Fine for daily/weekly TA; do not present an intraday guest print as a
   live quote. (`screen` needs no browser at all — it calls TradingView's public scanner API over
   HTTP.)
-- **Indicator budget: 2 per chart** in guest mode (`brochart study add` refuses the 3rd with a
-  "remove one first" message — `Volume` is the free default overlay and doesn't count). Avoid
-  add/remove churn within a session; reload if a pane comes up empty.
+- **Indicator budget: 2 per chart** in guest mode (a TradingView guest limit; `Volume` is the free
+  default overlay and doesn't count). Use `tvsandbox study add "<full name>"` / `study list` /
+  `study remove <id>` / `study clear` — the command enforces the cap (refuses the 3rd), dedupes, and
+  avoids the guest `createStudy` promise-hang you'd hit hand-writing `eval`. The traderbro.ai
+  `brochart` chart is separate and has no such cap.
 - Logging in is **optional** (and currently unused in production — the TV session pool is
   mothballed, see `docs-devops/tvsandbox-session-pool-mothballed.md`). `tvsandbox login` /
   `auth export` still work for a signed-in machine; login is detected from TradingView's own
