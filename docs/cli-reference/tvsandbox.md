@@ -32,6 +32,12 @@ traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
   bull/bear/continuation from the bars + screenshot, and server-side detection lives in
   [`calculated-events`](./calculated-events.md). tvsandbox *draws* any native shape you anchor.
 - **One shared Chrome — run commands sequentially**, never concurrently.
+- **Clean full-bleed chart by default:** on every chart connect the CLI enters TradingView's
+  fullscreen mode (hides the header, the left drawing toolbar and the right watchlist panel)
+  and installs a DOM observer that auto-removes TradingView's recurring blocking dialogs
+  (the guest "Look first / Then leap" gateway and the "More indicators / free trial" upsell —
+  both `data-dialog-name="gopro"`; the gateway variant has no close button, so it is removed
+  at the DOM level). Captures and live viewing both get the bare chart.
 
 ## Prerequisites
 
