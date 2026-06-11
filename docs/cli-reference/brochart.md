@@ -17,8 +17,14 @@ history, and bulk pattern scanning — use [`tvsandbox`](./tvsandbox.md).
 
 ## Prerequisites
 
-1. Start the bridge server: `traderbro brochart serve`
-2. Open your TraderBro chart page in a browser — the bridge connects automatically
+Pick one transport:
+
+- **Interactive (WS bridge)** — drives the chart tab a human has open:
+  1. Start the bridge server: `traderbro brochart serve`
+  2. Open your TraderBro chart page in a browser — the bridge connects automatically
+- **Headless (CDP)** — no human tab; the CLI owns a background Chrome (sandbox/agent use):
+  `traderbro brochart launch --via cdp --headless` (see [launch](#launch)). Every command
+  then works with the global `--via cdp` flag.
 
 ## Commands
 
@@ -67,9 +73,16 @@ Capture the active chart as a PNG.
 traderbro brochart close                              # dismiss panels first
 traderbro brochart screenshot -o /tmp/chart.png
 traderbro brochart screenshot                         # prints base64 to stdout
+traderbro brochart --via cdp screenshot -o /tmp/chart.png   # headless: watermark-free
 ```
 
 Always run `brochart close` before `brochart screenshot` to get a clean image.
+
+Over the headless/CDP transport (`--via cdp` / `--headless`) **with a file destination
+(`-o`)**, the chart pane is captured natively (CDP `Page.captureScreenshot`, clipped to
+the widget container `.TVChartContainer`) — **watermark-free** (no logged-in-account
+stamp). The WS bridge transport and base64-to-stdout output use TradingView's
+`takeClientScreenshot`.
 
 ---
 
@@ -329,12 +342,60 @@ traderbro brochart tab analysts            # symbols|analysts|patterns|copilot|h
 ```
 
 Notes:
-- The available **analysts** list populates once the Analysts tab has fetched for the
-  current symbol — run `tab analysts` (or `analysts list`) after switching symbols.
-- `brochart state --json` now includes a `sidebar` block (active tab + analyst/pattern
+- The available **analysts**/**patterns** list populates once the tab has fetched for the
+  current symbol — run `tab analysts` / `tab patterns` (or the `list`) after switching
+  symbols, and in headless allow ~5s before re-listing.
+- **JSON shape:** both `analysts list --json` and `patterns list --json` carry the
+  catalogue under **`available`** (+ `selected`, `direction`). `patterns list` also
+  includes `availableTypes` (alias of `available`), `aggregates` (per-type counts), and
+  `horizon`. `analysts list` rows are `{slug, name, followers}` — there is no quality field;
+  rank with `traderbro analyst list --sort return` to pick *which* analysts to overlay.
+- `brochart state --json` includes a `sidebar` block (active tab + analyst/pattern
   selection) for one-shot reads.
 - Modes: bare slugs/types **replace** the selection; `--add` / `--remove` / `--clear`
   adjust it. Selection changes refresh the chart overlays immediately.
+
+---
+
+### launch
+
+Launch (or reuse) an app-owned Chrome pointed at the self-hosted brochart chart and drive
+it over the DevTools Protocol — the **headless counterpart to the WS bridge**, for
+sandboxes/agents with no human browser tab. Authenticates by injecting a session JWT into
+`localStorage.token`; it does **not** use the bridge.
+
+```bash
+# Remote / sandbox (headless) — JWT from the environment (broker-injected)
+TRADERBRO_USER_JWT=<jwt> traderbro brochart launch --via cdp --headless
+
+# Local dev (foreground), explicit JWT + local chart URL (use your vite port, e.g. 3000/3002)
+traderbro brochart launch --via cdp --jwt <jwt> --cdp-url http://localhost:3000/chart
+
+# Then every command works over the same Chrome with --via cdp
+# (in local dev, repeat the SAME --cdp-url on each; in prod the default is correct):
+traderbro brochart --via cdp symbol NASDAQ:NVDA 1D
+traderbro brochart --via cdp analysts list --json
+traderbro brochart --via cdp analysts select alea --add
+traderbro brochart --via cdp close
+traderbro brochart --via cdp screenshot -o ~/shared/nvda.png   # watermark-free
+```
+
+Notes:
+- Uses CDP port **9334** by default (coexists with `tvsandbox`'s 9333) and its own Chrome
+  profile (`~/.traderbro/brochart-profile`), so both can run side-by-side in one sandbox.
+- **Auth:** `--jwt` defaults to `$TRADERBRO_USER_JWT`. A missing/invalid JWT makes the SPA
+  bounce to `/login` and `launch` fails loudly — fix the env var or `--jwt`, don't retry blind.
+- **Local dev — pass the same `--cdp-url` to EVERY `--via cdp` command**, not only `launch`.
+  The CLI locates the chart tab by that URL's host; if a follow-up command omits it, it
+  defaults to the production host and attaches to the wrong/missing tab. In production the
+  default URL is correct, so no `--cdp-url` is needed.
+- `serve`, `charts`, and `health` are **WS-bridge only** — they do not operate over
+  `--via cdp`. On a headless chart, confirm readiness from `launch`'s `ready` line and
+  `state --json` instead.
+- In headless, the Analysts/Patterns React panel fetch is slower (>5s): run `analysts list`
+  / `patterns list` **before** `select` so the overlay datafeed is primed.
+- `screenshot -o` over `--via cdp` is clipped to the chart pane — it shows the price chart
+  **with overlay marks** (analyst calls, pattern markers), not the sidebar panel UI.
 
 ---
 
@@ -525,3 +586,10 @@ guidance.
 | `--port` | `7891` | Bridge server port |
 | `--json` | false | Output as JSON |
 | `--no-color` | false | Disable colored output |
+| `--via` | `bridge` | Transport: `bridge` (WS server) or `cdp` (drive a launched Chrome over DevTools) |
+| `--headless` | false | Launch the brochart Chrome headless (remote/no-display servers) |
+| `--jwt` | `$TRADERBRO_USER_JWT` | Session JWT injected into `localStorage.token` for `--via cdp` auth |
+| `--cdp-port` | `9334` | CDP debug port for the brochart Chrome (`--via cdp`) |
+| `--cdp-url` | production | Chart URL for `--via cdp` (e.g. `http://localhost:3000/chart` for local dev — use your vite port; pass the SAME value to every `--via cdp` command) |
+| `--profile` | `~/.traderbro/brochart-profile` | Chrome profile dir for `--via cdp` |
+| `--tab` | — | Address a specific CDP tab by target id (`--via cdp`) |
