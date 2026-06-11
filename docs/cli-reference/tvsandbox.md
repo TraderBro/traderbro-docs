@@ -32,8 +32,12 @@ traderbro.ai-hosted chart, use [`brochart`](./brochart.md).
 - **Indicator budget: 2 per chart** in guest mode (a TradingView guest limit; `Volume` is the free
   default overlay and doesn't count). Use `tvsandbox study add "<full name>"` / `study list` /
   `study remove <id>` / `study clear` — the command enforces the cap (refuses the 3rd), dedupes, and
-  avoids the guest `createStudy` promise-hang you'd hit hand-writing `eval`. The traderbro.ai
-  `brochart` chart is separate and has no such cap.
+  avoids the guest `createStudy` promise-hang you'd hit hand-writing `eval`. Set indicator
+  parameters with **`--inputs`** (positional, comma-separated: `--inputs 200` for an EMA length,
+  `--inputs 12,26,9` for MACD) — without it you get TradingView defaults (e.g. EMA length 9). The
+  traderbro.ai `brochart` chart is separate and has no such cap.
+- **Capture flag asymmetry:** `bars`/`snap`/`screenshot` save with `--out`; `draw` saves with
+  `--screenshot`. They are not interchangeable.
 - Logging in is **optional** (and currently unused in production — the TV session pool is
   mothballed, see `docs-devops/tvsandbox-session-pool-mothballed.md`). `tvsandbox login` /
   `auth export` still work for a signed-in machine; login is detected from TradingView's own
