@@ -68,25 +68,28 @@ traderbro calculated-events types --json
 
 List events for a single symbol, most recent first.
 
+The symbol may be passed positionally OR via `--symbol` (equivalent — see
+[filtering conventions](filtering-conventions.md)).
+
 ```bash
-traderbro calculated-events list --symbol NASDAQ:AAPL
+traderbro calculated-events list NASDAQ:AAPL
 traderbro calculated-events list --symbol NASDAQ:AAPL --type golden_cross
 traderbro calculated-events list --symbol NASDAQ:AAPL --category oscillator --direction bullish
 traderbro calculated-events list --symbol NASDAQ:AAPL --within-days 90 --limit 20
-traderbro calculated-events list --symbol NASDAQ:AAPL --from 2025-01-01 --to 2025-06-01
+traderbro calculated-events list NASDAQ:AAPL --since 2025-01-01 --until 2025-06-01
 ```
 
 **Flags**
 
 | Flag | Description | Default |
 |---|---|---|
-| `--symbol` | Symbol in `EXCHANGE:TICKER` format (required) | — |
+| `--symbol` | Symbol `EXCHANGE:TICKER` (or pass it positionally) | — |
 | `--type` | Comma-separated event types to filter | all types |
 | `--category` | Filter by event category | all categories |
 | `--direction` | `bullish` or `bearish` | all |
 | `--within-days` | Only events in the last N days | — |
-| `--from` | Start date `YYYY-MM-DD` | — |
-| `--to` | End date `YYYY-MM-DD` | — |
+| `--since` | Start date `YYYY-MM-DD` (alias `--from`) | — |
+| `--until` | End date `YYYY-MM-DD` (alias `--to`) | — |
 | `--resolution` | `daily` (weekly/intraday coming soon — see plan 128) | `daily` |
 | `--limit` | Max events returned (max 500) | 50 |
 | `--cluster-within-days` | Collapse consecutive same-type events within N days into a single cluster row (0 = off) | 0 |

@@ -169,6 +169,31 @@ traderbro tvsandbox eval "window.TradingViewApi.activeChart().resolution()"
 
 ---
 
+### search
+
+Resolve a ticker or company name to the symbols TradingView actually serves on the
+guest feed, with their loadable exchange. Use it whenever you're unsure of the exact
+symbol/exchange — the guest feed often uses a different exchange than a stock's real
+primary listing (e.g. SPY loads as `AMEX:SPY`, **not** `NYSEARCA:SPY`). Don't guess;
+search, then pass a `SYMBOL` from the list straight to `bars`/`snap`.
+
+```bash
+traderbro tvsandbox search SPY
+# SYMBOL        EXCHANGE   TYPE   DESCRIPTION
+# AMEX:SPY      NYSE Arca  fund   SPDR S&P 500 ETF TRUST
+# ...
+traderbro tvsandbox search "nvidia" --json
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--limit` | `8` | Max results |
+
+Output (JSON): `{ "query", "matches": [{ "symbol", "ticker", "exchange", "type", "description" }, …] }`.
+`symbol` is the loadable form (prefix:ticker, or bare ticker).
+
+---
+
 ### bars
 
 Load a symbol on the chart and return its raw OHLCV bars.
@@ -183,6 +208,10 @@ traderbro tvsandbox bars NVDA --res 1D --json
 
 Output (JSON): `{ "symbol", "res", "count", "bars": [{ "Time", "Open", "High", "Low", "Close", "Vol" }, …] }`.
 `Time` is unix seconds (UTC).
+
+If the symbol isn't served on the guest feed, `bars` fails fast (exit 1) with
+`unresolved symbol … no data on the guest feed` **and lists candidate symbols** (from
+`tvsandbox search`) — retry with one of those rather than guessing an exchange.
 
 ---
 
