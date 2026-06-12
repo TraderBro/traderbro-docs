@@ -91,7 +91,7 @@ traderbro calculated-events list NASDAQ:AAPL --since 2025-01-01 --until 2025-06-
 | `--since` | Start date `YYYY-MM-DD` (alias `--from`) | — |
 | `--until` | End date `YYYY-MM-DD` (alias `--to`) | — |
 | `--resolution` | `daily` (weekly/intraday coming soon — see plan 128) | `daily` |
-| `--limit` | Max events returned (max 500) | 50 |
+| `--limit` | Max events returned (max 500). Returns a bounded page by default; `has_more=true` + a stderr note signal when more match — pass a higher `--limit` for the full set. | 25 |
 | `--cluster-within-days` | Collapse consecutive same-type events within N days into a single cluster row (0 = off) | 0 |
 | `--json` | Output as JSON | false |
 
@@ -148,7 +148,7 @@ traderbro calculated-events scan --type golden_cross --within-days 30 --symbols-
 | `--sort-by` | `occurred_at` or `symbol` | `occurred_at` |
 | `--sort-order` | `asc` or `desc` | `desc` |
 | `--symbols-only` | Output symbol list only (for piping) | false |
-| `--limit` | Max results (max 500) | 100 |
+| `--limit` | Max results (max 500). Bounded page by default; `has_more=true` + stderr note when more match — raise `--limit` for more. | 25 |
 | `--cluster-within-days` | Collapse consecutive same-type events within N days into a single cluster row (0 = off) | 0 |
 | `--json` | Output as JSON | false |
 
