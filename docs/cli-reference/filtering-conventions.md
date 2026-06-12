@@ -57,3 +57,34 @@ traderbro insight --symbol NVDA --symbol AMD --type evidence_insight
 `screener run` uses a separate, schema-driven field-filter DSL
 (`--filter "field:op:value"`, e.g. `--filter "country:eq:US"`) — it has **no `--market`
 flag**; choose a market with a `country`/`exchange` filter. See the screener reference.
+
+## Output formats: `--csv` for analysis
+
+Every data command emits a table on a terminal and tab-delimited text when piped.
+Add **`--json`** for the full envelope, or **`--csv`** for a header + one row per record
+that loads directly into pandas / a spreadsheet:
+
+```bash
+traderbro screener run --filter "sector:eq:Technology" --csv > tech.csv
+traderbro prediction --analyst aleabitoreddit --csv > preds.csv   # all return windows as columns
+traderbro analyst list --sort return --period 3m --csv > leaderboard.csv
+traderbro insight --symbol NASDAQ:NVDA --csv > sentiment.csv
+traderbro calculated-events scan --symbols NVDA,AAPL,EWY --csv > events.csv
+traderbro symbol trending --window 7d --csv
+traderbro prices NASDAQ:AAPL --last 90 --csv > aapl.csv
+```
+
+Notes:
+- **`--csv` works on every data command** (screener, prediction, analyst list, insight,
+  calculated-events scan/list, symbol trending, prices). Single-item / action commands
+  (`get`, `share`, `whoami`, schema/types) don't support it.
+- **`--no-header`** omits the header row so you can append to one file:
+  `traderbro prediction --analyst X --csv --no-header >> all.csv`.
+- CSV goes to **stdout only**; warnings/notes go to stderr, so a redirect captures clean data.
+- Numbers stay numeric (volume `1500000`, not `1.5e+06`); list fields like `tags` are joined
+  with `;` to stay in one column; commas/quotes are RFC-4180 quoted.
+- **CSV returns the same data subject to the same access limits as `--json`** — it is not a
+  way around per-tier caps or required filters.
+- `prediction --csv` / `analyst list --csv` emit **all** return horizons (7d…1y) as columns,
+  not just the `--period`-selected one. `insight --csv` omits the free-text `key_quote`
+  (use `--json` if you need it).
