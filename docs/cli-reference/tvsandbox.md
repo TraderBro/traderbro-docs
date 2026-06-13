@@ -200,14 +200,19 @@ Load a symbol on the chart and return its raw OHLCV bars.
 
 ```bash
 traderbro tvsandbox bars NVDA --res 1D --json
+traderbro tvsandbox bars NVDA --res 1W --out ~/work/nvda_1w.json   # write to file, print 1-line confirm
+traderbro tvsandbox bars NVDA --res 1D,1W,1M --out ~/work/nvda.json # multi-timeframe → one file per res
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--res` | `1D` | Chart resolution (e.g. `5`, `60`, `1D`, `1W`, `1M`) |
+| `--res` | `1D` | Chart resolution(s); accepts a **comma list** (e.g. `1D,1W,1M`) to fetch multiple timeframes in one call |
+| `--out` | — | Write bars to this file (JSON, or CSV if `--csv`/`.csv`) and print a **compact confirmation** instead of dumping the payload. Multi-res writes one file per res (`name_<res>.ext`). Prefer this for analysis — fetch once, then read the file (don't re-download). |
+| `--csv` | `false` | Emit/write bars as CSV (`date,time,open,high,low,close,volume`) for pandas |
 
-Output (JSON): `{ "symbol", "res", "count", "bars": [{ "Time", "Open", "High", "Low", "Close", "Vol" }, …] }`.
-`Time` is unix seconds (UTC).
+Output (JSON): `{ "symbol", "res", "count", "bars": [{ "Time", "Open", "High", "Low", "Close", "Vol" }, …] }`
+(or `{ "symbol", "resolutions": [...] }` for a multi-res stream). `Time` is unix seconds (UTC). With `--out`,
+stdout is just a confirmation line per file.
 
 If the symbol isn't served on the guest feed, `bars` fails fast (exit 1) with
 `unresolved symbol … no data on the guest feed` **and lists candidate symbols** (from
